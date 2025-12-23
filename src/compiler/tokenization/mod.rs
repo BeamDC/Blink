@@ -3,29 +3,25 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use regex::Regex;
 use crate::compiler::CompileError;
-use crate::compiler::tokenization::token::{Token, TokenStream};
+use crate::compiler::tokenization::token::{Token, TokenKind, TokenStream};
 
 pub mod token;
 
 #[derive(Debug, Clone)]
-pub struct Lexer<'lx, Kind: Tokenize<'lx>> {
+pub struct Lexer<'lx> {
     source: &'lx str,
     start: usize,
     pos: usize,
     pub err_found: bool,
-
-    // for now, we just have this to allow the Tokenize implementation
-    p: PhantomData<&'lx Kind>,
 }
 
-impl<'lx, Kind: Tokenize<'lx>> Lexer<'lx, Kind> {
+impl<'lx> Lexer<'lx> {
     pub fn new(source: &'lx str) -> Self {
         Self {
             source,
             start: 0,
             pos: 0,
             err_found: false,
-            p: PhantomData,
         }
     }
 
@@ -112,12 +108,12 @@ impl<'lx, Kind: Tokenize<'lx>> Lexer<'lx, Kind> {
     }
 }
 
-impl<'lx, Kind: Tokenize<'lx>> Iterator for Lexer<'lx, Kind> {
-    type Item = Result<Token<'lx, Kind>, CompileError>;
+impl<'lx> Iterator for Lexer<'lx> {
+    type Item = Result<Token<'lx>, CompileError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.err_found | (self.pos >= self.source.len()) { return None }
-        let res = Kind::next_token(self);
+        let res = TokenKind::next_token(self);
         if res.is_err() {
             self.err_found = true;
         }
@@ -141,12 +137,12 @@ where
     /// if any errors are encountered during tokenization,
     /// they will be returned instead
     #[allow(non_snake_case)]
-    fn Stream(src: &'lx str) -> Result<TokenStream<'lx, Self>, CompileError> {
-        let lex = Lexer::<Self>::new(src.trim());
+    fn Stream(src: &'lx str) -> Result<TokenStream<'lx>, CompileError> {
+        let lex = Lexer::new(src.trim());
         let mut tokens = vec![];
         for r in lex { tokens.push(r?); }
         Ok(TokenStream::from_iter(tokens.into_iter()))
     }
 
-    fn next_token(lexer: &mut Lexer<'lx, Self>) -> Result<Token<'lx, Self>, CompileError>;
+    fn next_token(lexer: &mut Lexer<'lx>) -> Result<Token<'lx>, CompileError>;
 }

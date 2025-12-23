@@ -5,7 +5,7 @@ use crate::compiler::tokenization::Tokenize;
 mod compiler;
 
 fn main () {
-    let src = r#"1.23 True False "hello, world" 'c'"#;
+    let src = r#"1.23 >>= 3 True False hello world true false "hi " "#;
 
     // tokenize src
     let start = Instant::now();

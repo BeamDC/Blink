@@ -133,7 +133,7 @@ pub enum TokenKind {
     Numeric,
     #[literal = "true"]
     True,
-    #[literal = "true"]
+    #[literal = "false"]
     False,
 
     #[literal = "fn"]
@@ -165,29 +165,29 @@ pub enum TokenKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct Token<'t, Kind: Tokenize<'t>> {
-    kind: Kind,
+pub struct Token<'t> {
+    kind: TokenKind,
     raw: &'t str,
     line: usize,
     col: usize,
 }
 
-impl<'t, Kind: Tokenize<'t>> fmt::Display for Token<'t, Kind> {
+impl<'t> fmt::Display for Token<'t> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind.to_string())
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct TokenStream<'t, Kind: Tokenize<'t>> {
-    stream: Vec<Token<'t, Kind>>,
+pub struct TokenStream<'t> {
+    stream: Vec<Token<'t>>,
     pos: usize,
 }
 
-impl<'ts, Kind: Tokenize<'ts>> TokenStream<'ts, Kind> {
+impl<'ts> TokenStream<'ts> {
     /// returns an optional reference to the next token in the stream,
     /// and advances the position in the stream
-    pub fn next(&mut self) -> Option<&Token<'ts, Kind>> {
+    pub fn next(&mut self) -> Option<&Token<'ts>> {
         if self.pos >= self.stream.len() { None }
         else {
             let val = &self.stream[self.pos];
@@ -198,24 +198,21 @@ impl<'ts, Kind: Tokenize<'ts>> TokenStream<'ts, Kind> {
 
     /// returns an optional reference to the next item in the stream,
     /// without advancing the position in the stream.
-    pub fn peek(&mut self) -> Option<&Token<'ts, Kind>> {
+    #[inline]
+    pub fn peek(&mut self) -> Option<&Token<'ts>> {
         if self.pos >= self.stream.len() { None }
-        else {
-            let val = &self.stream[self.pos];
-            Some(val)
-        }
+        else { Some(&self.stream[self.pos]) }
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = Token<'ts, Kind>> {
+    #[inline]
+    pub fn into_iter(self) -> impl Iterator<Item = Token<'ts>> {
         self.stream.into_iter()
     }
 
-    pub fn peek_kind(&mut self) -> Option<&Kind> {
+    #[inline]
+    pub fn peek_kind(&mut self) -> Option<&TokenKind> {
         if self.pos >= self.stream.len() { None }
-        else {
-            let val = &self.stream[self.pos];
-            Some(&val.kind)
-        }
+        else { Some(&self.stream[self.pos].kind) }
     }
 
     /// returns the current position in the stream
@@ -233,7 +230,7 @@ impl<'ts, Kind: Tokenize<'ts>> TokenStream<'ts, Kind> {
     }
 
     /// construct a new [`TokenStream`] from an iterator over tokens
-    pub fn from_iter<Iter: Iterator<Item = Token<'ts, Kind>>>(stream: Iter) -> Self {
+    pub fn from_iter<Iter: Iterator<Item = Token<'ts>>>(stream: Iter) -> Self {
         let stream = stream.collect::<Vec<_>>();
         Self {
             stream,

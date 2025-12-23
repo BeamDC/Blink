@@ -133,7 +133,7 @@ pub fn impl_tokenize(input: DeriveInput) -> TokenStream {
          * we need to do a bit more work
          */
         impl<'a> Tokenize<'a> for #name {
-            fn next_token(lexer: &mut Lexer<'a, Self>) -> Result<Token<'a, Self>, CompileError> {
+            fn next_token(lexer: &mut Lexer<'a>) -> Result<Token<'a>, CompileError> {
                 let (line, col) = lexer.pos();
                 lexer.match_regex(#skip);
                 #(#literal_checks)*
