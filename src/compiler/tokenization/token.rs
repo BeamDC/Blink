@@ -1,149 +1,193 @@
+use std::fmt;
+use std::fmt::Formatter;
+use util::Tokenize;
+use crate::compiler::tokenization::{Lexer, Tokenize};
 use crate::compiler::CompileError;
 
-#[derive(PartialEq, Debug)]
-pub enum Token {
-    At,         // @
-    Pound,      // #
-    Dollar,     // $
-    Lparen,     // (
-    Rparen,     // )
-    Lbrace,     // {
-    Rbrace,     // }
-    Lbracket,   // [
-    Rbracket,   // ]
-    Question,   // ?
-    BackSlash,  // \
-    Colon,      // :
-    Semicolon,  // ;
-    Assign,     // =
+#[derive(Tokenize, PartialEq, Debug, Copy, Clone)]
+#[skip = r"[ \n\r\t\f]+"]
+pub enum TokenKind {
+    #[literal = "@"]
+    At,
+    #[literal = "#"]
+    Pound,
+    #[literal = "$"]
+    Dollar,
+    #[literal = "("]
+    Lparen,
+    #[literal = ")"]
+    Rparen,
+    #[literal = "{"]
+    Lbrace,
+    #[literal = "}"]
+    Rbrace,
+    #[literal = "["]
+    Lbracket,
+    #[literal = "]"]
+    Rbracket,
+    #[literal = "?"]
+    Question,
+    #[literal = "\\"]
+    BackSlash,
+    #[literal = ":"]
+    Colon,
+    #[literal = ";"]
+    Semicolon,
+    #[literal = "="]
+    Assign,
 
-    Arrow,      // ->
-    Dot,        // .
-    Range,      // ..
-    RangeInc,   // ..=
+    #[literal = "->"]
+    Arrow,
+    #[literal = "::"]
+    Path,
+    #[literal = "."]
+    Dot,
+    #[literal = ".."]
+    Range,
+    #[literal = "..="]
+    RangeInc,
 
-    Add,        // +
-    CompAdd,    // +=
+    #[literal = "+"]
+    Add,
+    #[literal = "+="]
+    CompAdd,
 
-    Sub,        // -
-    CompSub,    // -=
+    #[literal = "-"]
+    Sub,
+    #[literal = "-="]
+    CompSub,
 
-    Mul,        // *
-    CompMul,    // *=
+    #[literal = "*"]
+    Mul,
+    #[literal = "*="]
+    CompMul,
 
-    Div,        // /
-    CompDiv,    // /=
+    #[literal = "/"]
+    Div,
+    #[literal = "/="]
+    CompDiv,
 
-    Mod,        // %
-    CompMod,    // %=
+    #[literal = "%"]
+    Mod,
+    #[literal = "%="]
+    CompMod,
 
-    Lshift,     // <<
-    CompLshift, // <<=
+    #[literal = "<<"]
+    Lshift,
+    #[literal = "<<="]
+    CompLshift,
 
-    Rshift,     // >>
-    CompRshift, // >>=
+    #[literal = ">>"]
+    Rshift,
+    #[literal = ">>="]
+    CompRshift,
 
-    BitAnd,     // &
-    CompBitAnd, // &=
+    #[literal = "&"]
+    BitAnd,
+    #[literal = "&="]
+    CompBitAnd,
 
-    BitOr,      // |
-    CompBitOr,  // |=
+    #[literal = "|"]
+    BitOr,
+    #[literal = "|="]
+    CompBitOr,
 
-    BitXor,     // ^
-    CompBitXor, // ^=
+    #[literal = "^"]
+    BitXor,
+    #[literal = "^="]
+    CompBitXor,
 
-    BitNot,     // ~
-    CompBitNot, // ~=
+    #[literal = "~"]
+    BitNot,
+    #[literal = "~="]
+    CompBitNot,
 
-    Bang,       // !
-    Neq,        // !=
-    Eq,         // ==
-    Gt,         // >
-    Lt,         // <
-    Ge,         // >=
-    Le,         // <=
-    And,        // &&
-    Xor,        // ^^
-    Or,         // ||
+    #[literal = "!"]
+    Bang,
+    #[literal = "!="]
+    Neq,
+    #[literal = "=="]
+    Eq,
+    #[literal = ">"]
+    Gt,
+    #[literal = "<"]
+    Lt,
+    #[literal = ">="]
+    Ge,
+    #[literal = "<="]
+    Le,
+    #[literal = "&&"]
+    And,
+    #[literal = "^^"]
+    Xor,
+    #[literal = "||"]
+    Or,
 
-    Ident(String),
-    String(String),
-    Char(String),
-    Numeric(String),
-    Whitespace(String),
+    #[regex = r"[a-zA-Z_][a-zA-Z_\d]+"]
+    Ident,
+    #[regex = r#""[^"]*""#]
+    String,
+    #[regex = r#"'[^']*'"#]
+    Char,
+    #[regex = r"\d+\.?\d*"]
+    Numeric,
+    #[literal = "true"]
     True,
+    #[literal = "true"]
     False,
 
+    #[literal = "fn"]
     Fn,
+    #[literal = "ret"]
+    Ret,
+    #[literal = "const"]
     Const,
+    #[literal = "struct"]
     Struct,
+    #[literal = "enum"]
     Enum,
+    #[literal = "let"]
     Let,
+    #[literal = "mut"]
     Mut,
+    #[literal = "if"]
     If,
+    #[literal = "else"]
+    Else,
+    #[literal = "while"]
     While,
+    #[literal = "for"]
     For,
+    #[literal = "loop"]
     Loop,
+    #[literal = "impl"]
     Impl,
-
-    End,
 }
 
-impl Token {
-    pub fn str_is_kword<S: AsRef<str>>(s: S) -> bool {
-        let s = s.as_ref();
-        match s {
-            "true"   |
-            "false"  |
-            "fn"     |
-            "const"  |
-            "struct" |
-            "enum"   |
-            "let"    |
-            "mut"    |
-            "if"     |
-            "while"  |
-            "for"    |
-            "loop"   |
-            "impl" => true,
-            _ => false,
-        }
-    }
+#[derive(Debug, Clone)]
+pub struct Token<'t, Kind: Tokenize<'t>> {
+    kind: Kind,
+    raw: &'t str,
+    line: usize,
+    col: usize,
+}
 
-    pub fn str_to_kword<S: AsRef<str>>(s: &S) -> Result<Token, CompileError> {
-        let s = s.as_ref();
-        let kw = match s {
-            "True" => Token::True,
-            "false" => Token::False,
-            "fn" => Token::Fn,
-            "const" => Token::Const,
-            "struct" => Token::Struct,
-            "enum" => Token::Enum,
-            "let" => Token::Let,
-            "mut" => Token::Mut,
-            "if" => Token::If,
-            "while" => Token::While,
-            "for" => Token::For,
-            "loop" => Token::Loop,
-            "impl" => Token::Impl,
-            _ => return Err(CompileError::TokenizationError(format!("{} is not a keyword", s))),
-        };
-        Ok(kw)
+impl<'t, Kind: Tokenize<'t>> fmt::Display for Token<'t, Kind> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind.to_string())
     }
 }
 
-#[derive(Debug)]
-pub struct TokenStream {
-    stream: Vec<Token>,
+#[derive(Debug, Clone)]
+pub struct TokenStream<'t, Kind: Tokenize<'t>> {
+    stream: Vec<Token<'t, Kind>>,
     pos: usize,
 }
 
-impl TokenStream {
-    /// returns a reference to the next token in the stream,
+impl<'ts, Kind: Tokenize<'ts>> TokenStream<'ts, Kind> {
+    /// returns an optional reference to the next token in the stream,
     /// and advances the position in the stream
-    ///
-    /// if the stream has no more tokens this will return [`None`] instead
-    pub fn next(&mut self) -> Option<&Token> {
+    pub fn next(&mut self) -> Option<&Token<'ts, Kind>> {
         if self.pos >= self.stream.len() { None }
         else {
             let val = &self.stream[self.pos];
@@ -154,7 +198,7 @@ impl TokenStream {
 
     /// returns an optional reference to the next item in the stream,
     /// without advancing the position in the stream.
-    pub fn peek(&mut self) -> Option<&Token> {
+    pub fn peek(&mut self) -> Option<&Token<'ts, Kind>> {
         if self.pos >= self.stream.len() { None }
         else {
             let val = &self.stream[self.pos];
@@ -162,7 +206,20 @@ impl TokenStream {
         }
     }
 
+    pub fn into_iter(self) -> impl Iterator<Item = Token<'ts, Kind>> {
+        self.stream.into_iter()
+    }
+
+    pub fn peek_kind(&mut self) -> Option<&Kind> {
+        if self.pos >= self.stream.len() { None }
+        else {
+            let val = &self.stream[self.pos];
+            Some(&val.kind)
+        }
+    }
+
     /// returns the current position in the stream
+    #[inline(always)]
     pub fn pos(&self) -> usize {
         self.pos
     }
@@ -170,12 +227,14 @@ impl TokenStream {
     /// jumps to a specific position in the stream
     ///
     /// Note: this does not check if the position is valid in the stream :P
-    pub fn return_to(&mut self, pos: usize) {
+    #[inline(always)]
+    pub fn jump_to(&mut self, pos: usize) {
         self.pos = pos;
     }
 
-    /// construct a new [`TokenStream`] from a vec of [`Token`]
-    pub fn new(stream: Vec<Token>) -> Self {
+    /// construct a new [`TokenStream`] from an iterator over tokens
+    pub fn from_iter<Iter: Iterator<Item = Token<'ts, Kind>>>(stream: Iter) -> Self {
+        let stream = stream.collect::<Vec<_>>();
         Self {
             stream,
             pos: 0,

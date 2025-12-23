@@ -1,36 +1,23 @@
-use crate::compiler::parsing::ast::AstNode;
-use crate::compiler::parsing::Parse;
+use std::time::Instant;
+use crate::compiler::tokenization::token::{TokenKind, TokenStream};
 use crate::compiler::tokenization::Tokenize;
+
 mod compiler;
 
-
 fn main () {
-    let start = std::time::Instant::now();
-    let ts = "1.23 + 45.6".tokenize();
-    println!("Tokenization completed in {:?}", start.elapsed());
+    let src = r#"1.23 True False "hello, world" 'c'"#;
 
-    let mut stream = match ts {
-        Ok(tokens) => {
-            println!("Tokenization Successful:\n{:?}", tokens);
-            tokens
-        },
-        Err(ce) => {
-            println!("Compile Error: {:?}", ce);
-            return;
-        }
+    // tokenize src
+    let start = Instant::now();
+    let mut stream = match TokenKind::Stream(src) {
+        Ok(stream) => stream,
+        Err(e) => panic!("{:?}", e),
     };
+    println!("Tokenized in {:?}", start.elapsed());
+    println!("{:#?}", stream);
 
-    let start = std::time::Instant::now();
-    let ast = AstNode::parse(&mut stream);
-    println!("Parsing completed in {:?}", start.elapsed());
-
-    let ast = match ast {
-        Ok(ast) => {
-            ast
-        },
-        Err(ce) => {
-            println!("Compile Error: {:?}", ce);
-            return;
-        },
-    };
+    // parse token stream
+    // let start = Instant::now();
+    // println!("Parsed in {:?}", start.elapsed());
+    // println!("{:?}", n);
 }
