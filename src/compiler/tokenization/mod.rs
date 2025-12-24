@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::marker::PhantomData;
 use std::ops::Range;
 use regex::Regex;
 use crate::compiler::CompileError;
@@ -86,13 +85,6 @@ impl<'lx> Lexer<'lx> {
         let mut pattern = String::from("^");
         pattern.push_str(pat);
         let re = Regex::new(&pattern).unwrap();
-        // let mat = re.find(&self.source[self.start..])?.as_str();
-        // for _ in 0..mat.len() {
-        //     self.advance();
-        // }
-        // let span = Some(self.start..self.pos);
-        // self.consume();
-        // span
         let mat = re.find(&self.source[self.start..])?;
         let match_len = mat.end() - mat.start();
         self.pos = self.start + match_len;

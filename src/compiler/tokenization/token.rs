@@ -1,3 +1,4 @@
+use std::cmp::PartialEq;
 use std::fmt;
 use std::fmt::Formatter;
 use util::Tokenize;
@@ -129,7 +130,7 @@ pub enum TokenKind {
     String,
     #[regex = r#"'[^']*'"#]
     Char,
-    #[regex = r"\d+\.?\d*"]
+    #[regex = r"\d+(?:\.\d+)?(?:[uif](?:8|16|32|64|128))?"]
     Numeric,
     #[literal = "true"]
     True,
@@ -164,9 +165,41 @@ pub enum TokenKind {
     Impl,
 }
 
+impl TokenKind {
+    /// returns true if self can be recognized as an operator
+    pub fn is_operator(&self) -> bool {
+        match self {
+            // mathematical
+            TokenKind::Add |
+            TokenKind::Sub |
+            TokenKind::Mul |
+            TokenKind::Div |
+            TokenKind::Mod |
+
+            // bitwise
+            TokenKind::BitAnd |
+            TokenKind::BitOr  |
+            TokenKind::BitXor |
+            TokenKind::BitNot |
+            TokenKind::Rshift |
+            TokenKind::Lshift |
+
+            // comparison
+            TokenKind::And |
+            TokenKind::Or  |
+            TokenKind::Eq  |
+            TokenKind::Lt  |
+            TokenKind::Le  |
+            TokenKind::Gt  |
+            TokenKind::Ge  => true,
+            _ => false
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Token<'t> {
-    kind: TokenKind,
+    pub(crate) kind: TokenKind,
     raw: &'t str,
     line: usize,
     col: usize,
@@ -185,6 +218,19 @@ pub struct TokenStream<'t> {
 }
 
 impl<'ts> TokenStream<'ts> {
+    /// parse a single token out of the stream
+    pub fn expect(&mut self, kind: TokenKind) -> Result<Token<'ts>, CompileError> {
+        match self.peek_kind() {
+            Some(t) if *t == kind => Ok(self.next().unwrap().clone()),
+            Some(t) => Err(CompileError::ParseError(
+                format!("Expected {:?}, found {:?}", kind, t),
+            )),
+            None => Err(CompileError::ParseError(
+                format!("Expected {:?}, found end of file", kind)
+            )),
+        }
+    }
+
     /// returns an optional reference to the next token in the stream,
     /// and advances the position in the stream
     pub fn next(&mut self) -> Option<&Token<'ts>> {
@@ -215,6 +261,16 @@ impl<'ts> TokenStream<'ts> {
         else { Some(&self.stream[self.pos].kind) }
     }
 
+    #[inline]
+    pub fn peek_match(&mut self, kind: TokenKind) -> bool {
+        self.peek_kind() == Some(&kind)
+    }
+
+    #[inline]
+    pub fn peek_any(&mut self, kinds: &[TokenKind]) -> bool {
+        self.peek_kind().map_or(false, |t| kinds.contains(&t))
+    }
+
     /// returns the current position in the stream
     #[inline(always)]
     pub fn pos(&self) -> usize {
@@ -230,10 +286,10 @@ impl<'ts> TokenStream<'ts> {
     }
 
     /// construct a new [`TokenStream`] from an iterator over tokens
+    #[inline(always)]
     pub fn from_iter<Iter: Iterator<Item = Token<'ts>>>(stream: Iter) -> Self {
-        let stream = stream.collect::<Vec<_>>();
         Self {
-            stream,
+            stream: stream.collect::<Vec<Token<'ts>>>(),
             pos: 0,
         }
     }
