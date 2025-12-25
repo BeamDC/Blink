@@ -1,7 +1,9 @@
-use std::cmp::{Ordering, PartialOrd};
-use crate::compiler::CompileError;
 use crate::compiler::parsing::Parse;
 use crate::compiler::tokenization::token::{Token, TokenKind, TokenStream};
+use crate::compiler::CompileError;
+use std::cmp::PartialOrd;
+use std::fmt;
+use std::fmt::Formatter;
 
 #[derive(PartialOrd, PartialEq, Debug)]
 #[repr(u8)]
@@ -20,26 +22,66 @@ pub enum Precedence {
     Additive,       // +, -
     Multiplicative, // *, /, %
     Unary,          // +, -, !, ...
-    Call,           // ., (), []
+    Call,           // ., (), [], ...
 }
 
 #[derive(Debug)]
 pub enum Expr<'e> {
+    /// literal values
+    /// # Example:
+    /// ```no_run
+    /// 3.14
+    /// true
+    /// "hello"
+    /// 'c'
+    /// ```
     Literal {
         kind: LiteralKind,
         token: Token<'e>,
     },
-    Indent(Token<'e>),
+    /// named values
+    /// # Example:
+    /// ```ignore
+    /// x
+    /// ```
+    Ident(Token<'e>),
+    /// infix expressions
+    /// # Example:
+    /// ```ignore
+    /// Expr op Expr
+    /// ```
     Binary{
         op: Token<'e>,
         left: Box<Expr<'e>>,
         right: Box<Expr<'e>>,
     },
+    /// postfix and prefix expressions
+    /// # Example:
+    /// ```ignore
+    /// op Expr
+    /// ```
+    ///
+    /// OR
+    ///
+    /// ```ignore
+    /// Expr op
+    /// ```
     Unary {
         op: Token<'e>,
         operand: Box<Expr<'e>>,
     },
-    Grouped(Box<Expr<'e>>)
+    /// an expression of the form ```( Expr )```
+    Group(Box<Expr<'e>>),
+    /// multiple expressions contained within curly braces.
+    /// # Example:
+    /// ```ignore
+    /// {
+    ///     Expr1;
+    ///     Expr2;
+    ///     Expr3;
+    /// }
+    /// ```
+    Block(Vec<Expr<'e>>),
 }
 
 #[derive(Debug)]
@@ -61,32 +103,12 @@ impl LiteralKind {
         }
     }
 }
-// impl<'p> Parse<'p> for Literal<'p> {
-//     fn parse(stream: &mut TokenStream<'p>) -> Result<Self, CompileError> {
-//         let token = match stream.next() {
-//             Some(token) => token,
-//             None => {
-//                 return Err(CompileError::ParseError(
-//                     "Expected Literal, found end of file".into()
-//                 ))
-//             }
-//         }.clone();
-//
-//         let kind = match token.kind {
-//             TokenKind::Numeric => LiteralKind::Numeric,
-//             TokenKind::String => LiteralKind::String,
-//             TokenKind::Char => LiteralKind::Char,
-//             TokenKind::True => LiteralKind::Boolean,
-//             TokenKind::False => LiteralKind::Boolean,
-//             k => return Err(CompileError::ParseError(
-//                 format!("{:?} is not a valid literal", k)
-//             ))
-//
-//         };
-//
-//         Ok(Literal { kind, token })
-//     }
-// }
+
+impl<'e> fmt::Display for Expr<'e> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
 
 impl<'e> Parse<'e> for Expr<'e> {
     fn parse(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
@@ -122,11 +144,13 @@ impl<'e> Expr<'e> {
 
         while let Some(kind) = stream.peek_kind() {
             let precedence = Self::precendence(*kind);
-
             if current_precedence >= precedence { break }
 
             left = Self::infix(stream, left)?
         }
+
+        // todo : parse postfix expressions
+        // left = Self::postfix(stream)?
 
         Ok(left)
     }
@@ -152,14 +176,14 @@ impl<'e> Expr<'e> {
                 })
             }
             TokenKind::Ident => {
-                Ok(Expr::Indent(token))
+                Ok(Expr::Ident(token))
             }
             TokenKind::Lparen => {
                 let expr = Expr::parse(stream)?;
                 stream.expect(TokenKind::Rparen)?;
-                Ok(Expr::Grouped(Box::new(expr)))
+                Ok(Expr::Group(Box::new(expr)))
             }
-            TokenKind::Add | TokenKind::Sub => {
+            k if k.is_operator() => {
                 let expr = Self::parse_precedence(stream, Precedence::Unary)?;
                 Ok(Expr::Unary {
                     op: token,

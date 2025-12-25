@@ -7,7 +7,7 @@ use std::time::Instant;
 mod compiler;
 
 fn main () {
-    let src = r#"-1 + 2 << 3"#;
+    let src = r#"-1 + (2 << 3)"#;
 
     // tokenize src
     let start = Instant::now();

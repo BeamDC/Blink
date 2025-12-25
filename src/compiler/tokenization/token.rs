@@ -185,13 +185,14 @@ impl TokenKind {
             TokenKind::Lshift |
 
             // comparison
-            TokenKind::And |
-            TokenKind::Or  |
-            TokenKind::Eq  |
-            TokenKind::Lt  |
-            TokenKind::Le  |
-            TokenKind::Gt  |
-            TokenKind::Ge  => true,
+            TokenKind::Bang |
+            TokenKind::And  |
+            TokenKind::Or   |
+            TokenKind::Eq   |
+            TokenKind::Lt   |
+            TokenKind::Le   |
+            TokenKind::Gt   |
+            TokenKind::Ge   => true,
             _ => false
         }
     }
