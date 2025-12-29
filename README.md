@@ -9,3 +9,4 @@ the blink programming language
    - if the resulting code is an improvement over the original, we generate a function pointer to a new instruction set taking only the non constant args
    - replace the original call with a call to the new function.
      - In theory this can lead to big optimizations if large sections of the function only use compile time arguments
+   - looking at this again, it might be worth it to use this to help with inlining a function by minimizing its body

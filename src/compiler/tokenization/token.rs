@@ -222,6 +222,9 @@ impl<'ts> TokenStream<'ts> {
     /// parse a single [`Token`] of some given [`TokenKind`] out of the stream.
     /// If the next token is of the given type, it is returned,
     /// otherwise an error is returned.
+    /// 
+    /// note : this returns a parse error because checking things in the stream
+    /// is considered parsing (at least by me)
     pub fn expect(&mut self, kind: TokenKind) -> Result<Token<'ts>, CompileError> {
         match self.peek_kind() {
             Some(t) if *t == kind => Ok(self.next().unwrap().clone()),

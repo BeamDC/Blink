@@ -3,6 +3,7 @@ use crate::compiler::tokenization::token::{Token, TokenKind, TokenStream};
 use crate::compiler::CompileError;
 use std::cmp::PartialOrd;
 use std::fmt;
+use std::ops::Deref;
 
 #[derive(PartialOrd, PartialEq, Debug)]
 #[repr(u8)]
@@ -85,19 +86,23 @@ pub enum Expr<'e> {
     /// }
     /// ```
     Block(Vec<Expr<'e>>),
-    /// variable assignment.
-    /// Can be optionally provided with a type, as well as mutability.
-    /// # Examples:
-    /// ```ignore
-    /// let x = 2 << 3;
-    /// let mut y = 42;
-    /// let mut usize z = 101;
-    /// ```
-    Let {
+    /// a type expression
+    Type {
         /// if the variable is mutable or not
         mutable: bool,
+        /// the type Identifier, will probably become an expression in the future
+        ident: Token<'e>,
+    },
+    /// variable assignment.
+    /// variables are immutable by default, but mutability can be specified
+    /// # Examples:
+    /// ```ignore
+    /// i32 x = 2 << 3;
+    /// mut usize y = 42;
+    /// ```
+    Assignment {
         /// the type of the variable
-        var_type: Option<Box<Expr<'e>>>,
+        var_type: Box<Expr<'e>>,
         /// the identifier associated with this variable
         ident: Token<'e>,
         /// the right side of the assignment expression
@@ -138,17 +143,15 @@ impl<'e> fmt::Display for Expr<'e> {
                 for expr in b { write!(f, "{}", expr)?; }
                 write!(f, "}}")
             },
-            Expr::Let { mutable, ident, var_type, value } => {
-                let var_type = match var_type {
-                    Some(var_type) => var_type.to_string(),
-                    None => String::new(),
-                };
-
+            Expr::Type { mutable, ident } => {
                 if *mutable {
-                    write!(f, "mut {} {} = {} ", var_type, ident, value)
+                    write!(f, "mut {}", ident.raw)
                 } else {
-                    write!(f, "{} {} = {} ", var_type, ident, value)
+                    write!(f, "{}", ident.raw)
                 }
+            }
+            Expr::Assignment { var_type, ident, value } => {
+                 write!(f, "{} {} = {} ", var_type, ident.raw, value)
             }
         }
     }
@@ -164,38 +167,55 @@ impl<'e> Expr<'e> {
     fn parse_first(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
         // check for 'Let'
         if stream.peek_kind() == Some(&TokenKind::Let) {
-            Self::parse_let(stream)?;
+            return Self::parse_let(stream);
         }
 
         Self::parse_precedence(stream, Precedence::Min)
     }
 
+    /// parse a type expression from the stream
+    fn parse_type_expr(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
+        // check for mut
+        let mutable = if stream.peek_kind() == Some(&TokenKind::Mut) {
+            stream.expect(TokenKind::Mut)?;
+            true
+        } else { false };
+
+        // parse out type ident
+        let ident = stream.expect(TokenKind::Ident)?;
+
+        Ok(Expr::Type {
+            mutable,
+            ident,
+        })
+    }
+
+    /// parse a variable assignment from the stream
     fn parse_let(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
         // consume 'let'
         stream.expect(TokenKind::Let)?;
-        let mutable = if stream.peek_kind() == Some(&TokenKind::Mut) {
-            stream.next();
-            true
-        } else { false };
+
+        // parse out variable type
+        let var_type = Self::parse_type_expr(stream)?;
 
         let ident = stream.expect(TokenKind::Ident)?;
 
         // consume '='
         stream.expect(TokenKind::Assign)?;
 
-        println!("{:?}", stream);
-
         let value = Expr::parse_first(stream)?;
 
-        Ok(Expr::Let {
-            mutable,
-            var_type: None, // todo : revisit this when we can parse Type Expressions
+        // consume ';'
+        stream.expect(TokenKind::Semicolon)?;
+
+        Ok(Expr::Assignment {
+            var_type: Box::new(var_type),
             ident,
             value: Box::new(value),
         })
     }
 
-    fn precendence(kind: TokenKind) -> Precedence {
+    const fn precendence(kind: TokenKind) -> Precedence {
         use TokenKind as TK;
 
         match kind {

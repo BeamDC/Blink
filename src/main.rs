@@ -8,7 +8,7 @@ mod compiler;
 
 fn main () {
     let src = r#"
-    -1 + (2 << 3)
+    let mut i32 x = -1 + (2 << 3);
     "#;
 
     // tokenize src
