@@ -3,7 +3,6 @@ use crate::compiler::tokenization::token::{Token, TokenKind, TokenStream};
 use crate::compiler::CompileError;
 use std::cmp::PartialOrd;
 use std::fmt;
-use std::fmt::Formatter;
 
 #[derive(PartialOrd, PartialEq, Debug)]
 #[repr(u8)]
@@ -70,7 +69,11 @@ pub enum Expr<'e> {
         op: Token<'e>,
         operand: Box<Expr<'e>>,
     },
-    /// an expression of the form ```( Expr )```
+    /// multiple expressions contained within curly braces.
+    /// # Example:
+    /// ```ignore
+    /// ( Expr )
+    /// ```
     Group(Box<Expr<'e>>),
     /// multiple expressions contained within curly braces.
     /// # Example:
@@ -82,6 +85,24 @@ pub enum Expr<'e> {
     /// }
     /// ```
     Block(Vec<Expr<'e>>),
+    /// variable assignment.
+    /// Can be optionally provided with a type, as well as mutability.
+    /// # Examples:
+    /// ```ignore
+    /// let x = 2 << 3;
+    /// let mut y = 42;
+    /// let mut usize z = 101;
+    /// ```
+    Let {
+        /// if the variable is mutable or not
+        mutable: bool,
+        /// the type of the variable
+        var_type: Option<Box<Expr<'e>>>,
+        /// the identifier associated with this variable
+        ident: Token<'e>,
+        /// the right side of the assignment expression
+        value: Box<Expr<'e>>,
+    }
 }
 
 #[derive(Debug)]
@@ -105,18 +126,75 @@ impl LiteralKind {
 }
 
 impl<'e> fmt::Display for Expr<'e> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Expr::Literal { token, .. } => write!(f, "{}", token.raw),
+            Expr::Ident(i) => write!(f, "{}", i.raw),
+            Expr::Binary { op, left, right } => write!(f, "{}({}, {})", op.kind, left, right),
+            Expr::Unary { op, operand } => write!(f, "{}({})", op, operand),
+            Expr::Group(g) => write!(f, "({})", g),
+            Expr::Block(b) => {
+                write!(f, "{{")?;
+                for expr in b { write!(f, "{}", expr)?; }
+                write!(f, "}}")
+            },
+            Expr::Let { mutable, ident, var_type, value } => {
+                let var_type = match var_type {
+                    Some(var_type) => var_type.to_string(),
+                    None => String::new(),
+                };
+
+                if *mutable {
+                    write!(f, "mut {} {} = {} ", var_type, ident, value)
+                } else {
+                    write!(f, "{} {} = {} ", var_type, ident, value)
+                }
+            }
+        }
     }
 }
 
 impl<'e> Parse<'e> for Expr<'e> {
     fn parse(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
-        Self::parse_precedence(stream, Precedence::Min)
+        Self::parse_first(stream)
     }
 }
 
 impl<'e> Expr<'e> {
+    fn parse_first(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
+        // check for 'Let'
+        if stream.peek_kind() == Some(&TokenKind::Let) {
+            Self::parse_let(stream)?;
+        }
+
+        Self::parse_precedence(stream, Precedence::Min)
+    }
+
+    fn parse_let(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
+        // consume 'let'
+        stream.expect(TokenKind::Let)?;
+        let mutable = if stream.peek_kind() == Some(&TokenKind::Mut) {
+            stream.next();
+            true
+        } else { false };
+
+        let ident = stream.expect(TokenKind::Ident)?;
+
+        // consume '='
+        stream.expect(TokenKind::Assign)?;
+
+        println!("{:?}", stream);
+
+        let value = Expr::parse_first(stream)?;
+
+        Ok(Expr::Let {
+            mutable,
+            var_type: None, // todo : revisit this when we can parse Type Expressions
+            ident,
+            value: Box::new(value),
+        })
+    }
+
     fn precendence(kind: TokenKind) -> Precedence {
         use TokenKind as TK;
 
@@ -226,7 +304,7 @@ impl<'e> Expr<'e> {
                 todo!("come back to this when we can parse a ParamList / ArgList")
             }
             _ => Err(CompileError::ParseError(
-                format!("Expected operator or function call, found: {:?}", kind)
+                format!("Expected expression, found: {:?}", kind)
             ))
         }
     }

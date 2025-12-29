@@ -7,7 +7,9 @@ use std::time::Instant;
 mod compiler;
 
 fn main () {
-    let src = r#"-1 + (2 << 3)"#;
+    let src = r#"
+    -1 + (2 << 3)
+    "#;
 
     // tokenize src
     let start = Instant::now();
@@ -16,7 +18,7 @@ fn main () {
         Err(e) => panic!("{:?}", e),
     };
     println!("Tokenized in {:?}", start.elapsed());
-    println!("{:#?}", stream);
+    // println!("{:#?}", stream);
 
     // parse token stream
     let start = Instant::now();
@@ -25,5 +27,5 @@ fn main () {
         Err(e) => panic!("{:?}", e),
     };
     println!("Parsed in {:?}", start.elapsed());
-    println!("{:#?}", expr);
+    println!("{}", expr);
 }

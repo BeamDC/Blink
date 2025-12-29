@@ -8,9 +8,9 @@ pub mod token;
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'lx> {
-    source: &'lx str,
-    start: usize,
-    pos: usize,
+    pub source: &'lx str,
+    pub start: usize,
+    pub pos: usize,
     pub err_found: bool,
 }
 

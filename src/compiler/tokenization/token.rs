@@ -124,7 +124,7 @@ pub enum TokenKind {
     #[literal = "||"]
     Or,
 
-    #[regex = r"[a-zA-Z_][a-zA-Z_\d]+"]
+    #[regex = r"[a-zA-Z_][a-zA-Z_\d]*"]
     Ident,
     #[regex = r#""[^"]*""#]
     String,
@@ -200,10 +200,10 @@ impl TokenKind {
 
 #[derive(Debug, Clone)]
 pub struct Token<'t> {
-    pub(crate) kind: TokenKind,
-    raw: &'t str,
-    line: usize,
-    col: usize,
+    pub kind: TokenKind,
+    pub raw: &'t str,
+    pub line: usize,
+    pub col: usize,
 }
 
 impl<'t> fmt::Display for Token<'t> {
@@ -214,12 +214,14 @@ impl<'t> fmt::Display for Token<'t> {
 
 #[derive(Debug, Clone)]
 pub struct TokenStream<'t> {
-    stream: Vec<Token<'t>>,
-    pos: usize,
+    pub stream: Vec<Token<'t>>,
+    pub pos: usize,
 }
 
 impl<'ts> TokenStream<'ts> {
-    /// parse a single token out of the stream
+    /// parse a single [`Token`] of some given [`TokenKind`] out of the stream.
+    /// If the next token is of the given type, it is returned,
+    /// otherwise an error is returned.
     pub fn expect(&mut self, kind: TokenKind) -> Result<Token<'ts>, CompileError> {
         match self.peek_kind() {
             Some(t) if *t == kind => Ok(self.next().unwrap().clone()),
