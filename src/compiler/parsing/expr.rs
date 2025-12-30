@@ -4,6 +4,7 @@ use crate::compiler::CompileError;
 use std::cmp::PartialOrd;
 use std::fmt;
 use std::ops::Deref;
+use crate::compiler::parsing::type_expr::TypeExpr;
 
 #[derive(PartialOrd, PartialEq, Debug)]
 #[repr(u8)]
@@ -86,58 +87,6 @@ pub enum Expr<'e> {
     /// }
     /// ```
     Block(Vec<Expr<'e>>),
-    /// variable assignment.
-    /// variables are immutable by default, but mutability can be specified
-    /// # Examples:
-    /// ```ignore
-    /// i32 x = 2 << 3;
-    /// mut usize y = 42;
-    /// ```
-    Assignment {
-        /// the type of the variable
-        var_type: TypeExpr<'e>,
-        /// the identifier associated with this variable
-        ident: Token<'e>,
-        /// the right side of the assignment expression
-        value: Box<Expr<'e>>,
-    }
-}
-
-#[derive(Debug)]
-pub struct TypeExpr<'e> {
-    /// if the variable is mutable or not
-    pub mutable: bool,
-    /// the type Identifier, will probably become an expression in the future
-    pub ident: Token<'e>,
-}
-
-impl fmt::Display for TypeExpr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.mutable {
-            write!(f, "mut {}", self.ident.raw)
-        } else {
-            write!(f, "{}", self.ident.raw)
-        }
-    }
-}
-
-impl<'e> Parse<'e> for TypeExpr<'e> {
-    fn parse(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
-        // check for mut
-        let mutable = if stream.peek_kind() == Some(&TokenKind::Mut) {
-            stream.expect(TokenKind::Mut)?;
-            true
-        } else { false };
-
-        // parse out type ident
-        // todo : make a more robust system for parsing out types
-        let ident = stream.expect(TokenKind::Ident)?;
-
-        Ok(TypeExpr {
-            mutable,
-            ident,
-        })
-    }
 }
 
 #[derive(Debug)]
@@ -173,9 +122,9 @@ impl fmt::Display for Expr<'_> {
                 for expr in b { write!(f, "{}", expr)?; }
                 write!(f, "}}")
             },
-            Expr::Assignment { var_type, ident, value } => {
-                 write!(f, "{} {} = {} ", var_type, ident.raw, value)
-            }
+            // Expr::Assignment { var_type, ident, value } => {
+            //      write!(f, "{} {} = {} ", var_type, ident.raw, value)
+            // }
         }
     }
 }
@@ -187,38 +136,8 @@ impl<'e> Parse<'e> for Expr<'e> {
 }
 
 impl<'e> Expr<'e> {
-    fn parse_first(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
-        // check for 'Let'
-        if stream.peek_kind() == Some(&TokenKind::Let) {
-            return Self::parse_let(stream);
-        }
-
+    pub fn parse_first(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
         Self::parse_precedence(stream, Precedence::Min)
-    }
-
-    /// parse a variable assignment from the stream
-    fn parse_let(stream: &mut TokenStream<'e>) -> Result<Self, CompileError> {
-        // consume 'let'
-        stream.expect(TokenKind::Let)?;
-
-        // parse out variable type
-        let var_type = TypeExpr::parse(stream)?;
-
-        let ident = stream.expect(TokenKind::Ident)?;
-
-        // consume '='
-        stream.expect(TokenKind::Assign)?;
-
-        let value = Expr::parse_first(stream)?;
-
-        // consume ';'
-        stream.expect(TokenKind::Semicolon)?;
-
-        Ok(Expr::Assignment {
-            var_type,
-            ident,
-            value: Box::new(value),
-        })
     }
 
     const fn precendence(kind: TokenKind) -> Precedence {

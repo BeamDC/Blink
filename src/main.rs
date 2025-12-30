@@ -3,6 +3,7 @@ use crate::compiler::parsing::Parse;
 use crate::compiler::tokenization::token::TokenKind;
 use crate::compiler::tokenization::Tokenize;
 use std::time::Instant;
+use crate::compiler::parsing::stmt::Statement;
 
 mod compiler;
 
@@ -22,10 +23,10 @@ fn main () {
 
     // parse token stream
     let start = Instant::now();
-    let expr = match Expr::parse(&mut stream) {
+    let stmt = match Statement::parse(&mut stream) {
         Ok(lit) => lit,
         Err(e) => panic!("{:?}", e),
     };
     println!("Parsed in {:?}", start.elapsed());
-    println!("{}", expr);
+    println!("{}", stmt);
 }

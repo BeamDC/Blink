@@ -4,7 +4,7 @@ use crate::compiler::tokenization::token::{TokenStream};
 pub mod ast;
 pub mod expr;
 pub mod stmt;
-
+mod type_expr;
 /* The grammar will consist of two main parts, expressions and statements.
  * Expressions:
  * | - return a value
