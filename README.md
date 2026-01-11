@@ -1,1 +1,1 @@
-the Blink programming language
+The Blink programming language
