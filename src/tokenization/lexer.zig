@@ -13,37 +13,37 @@ pub const lexer = struct {
 
     /// returns true if the end of the file has been reached,
     /// otherwise returns false
-    fn eof(self: *lexer) bool {
+    inline fn eof(self: *lexer) bool {
         return self.pos >= self.src.len;
     }
 
     /// returns the next character in the input stream,
     /// returns null if the end of the file has been reached
-    fn peek(self: *lexer) ?u8 {
+    inline fn peek(self: *lexer) ?u8 {
         if (self.eof()) return null;
         return self.src[self.pos];
     }
 
     /// return the next character in the input stream, and increment the
     /// position of the lexer.
-    fn advance(self: *lexer) u8 {
+    inline fn advance(self: *lexer) u8 {
         const c = self.src[self.pos];
         self.pos += 1;
         return c;
     }
 
     /// returns if a character is a valid starting char for an identifier
-    fn isIdentStart(c: u8) bool {
+    inline fn isIdentStart(c: u8) bool {
         return std.ascii.isAlphabetic(c) or c == '_';
     }
 
     /// returns if a character is a valid char for an identifier
-    fn isIdentChar(c: u8) bool {
+    inline fn isIdentChar(c: u8) bool {
         return std.ascii.isAlphanumeric(c) or c == '_';
     }
 
     /// ship any upcoming whitespace chars
-    fn skipWhitespace(self: *lexer) void {
+    inline fn skipWhitespace(self: *lexer) void {
         while (!self.eof() and std.ascii.isWhitespace(self.src[self.pos])) {
             self.pos += 1;
         }
@@ -138,29 +138,27 @@ pub const lexer = struct {
         const c = self.advance();
 
         switch (c) {
-            'a'...'z', 'A'...'Z', '_' => {
-                return try self.keywordOrIdent(start);
-            },
-            '0'...'9' => {
-                return try self.number(start);
-            },
-            else => {
-                return try self.symbol(start);
-            },
+            'a'...'z', 'A'...'Z', '_' => return try self.keywordOrIdent(start),
+            '0'...'9' => return try self.number(start),
+            else => return try self.symbol(start),
         }
     }
 
     /// Tokenize the entire input stream, returning the slice of tokens
-    pub fn tokenize(self: *lexer, alloc: std.mem.Allocator) ![]Token {
-        var tokens: std.ArrayList(Token) = .empty;
-        defer _ = tokens.deinit(alloc);
+    // pub fn tokenize(self: *lexer, alloc: std.mem.Allocator) ![]Token {
+    pub fn tokenize(self: *lexer, tokens: []Token) !usize {
+        // var tokens: std.ArrayList(Token) = .empty;
+        // defer _ = tokens.deinit(alloc);
 
-        while (!self.eof()) {
+        var i: usize = 0;
+        while (!self.eof()) : (i+=1) {
             const next = try self.nextToken();
             if (next == null) break;
-            try tokens.append(alloc, next.?);
+            // try tokens.append(alloc, next.?);
+            tokens[i] = next.?;
         }
 
-        return tokens.toOwnedSlice(alloc);
+        return i;
+        // return tokens[0..i];
     }
 };

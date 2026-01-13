@@ -1,5 +1,7 @@
 const std = @import("std");
+const Token = @import("tokenization/token.zig").Token;
 const lexer = @import("tokenization/lexer.zig").lexer;
+const zbench = @import("zbench");
 
 pub fn main() !void {
     // var gpa: std.heap.DebugAllocator(.{}) = .init;
@@ -22,13 +24,17 @@ pub fn main() !void {
     // std.debug.print("Lexer:\n{any}\n", .{lex});
 
     var timer = try std.time.Timer.start();
-    const tokens = try lex.tokenize(alloc);
+    const tokens: []Token = try alloc.alloc(Token, lex.src.len);
+    // const tokens = try lex.tokenize(alloc);
+    // const num_tokens = try lex.tokenize(tokens);
+    _ = try lex.tokenize(tokens);
     defer alloc.free(tokens);
     const elapsed: f64 = @floatFromInt(timer.read());
 
-    for (tokens) |token| {
-        std.debug.print("{f}\n", .{token});
-    }
+    // for (tokens[0..num_tokens]) |token| {
+        // std.debug.print("{f}\n", .{token});
+    // }
 
     std.debug.print("tokenized in: {d:.2} microseconds\n", .{elapsed / 1000});
+    // std.debug.print("{d} tokens used, {d} available\n", .{num_tokens + 1, tokens.len});
 }

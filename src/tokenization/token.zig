@@ -151,24 +151,6 @@ pub const TokenType = enum(u16) {
 
     /// a map from string representations of keywords,
     /// to their respective TokenType
-    // pub const keyword_map = std.StaticStringMap(TokenType, .{
-    //     .{"true",   .True},
-    //     .{"false",  .False},
-    //     .{"fn",     .Fn},
-    //     .{"ret",    .Ret},
-    //     .{"const",  .Const},
-    //     .{"struct", .Struct},
-    //     .{"enum",   .Enum},
-    //     .{"let",    .Let},
-    //     .{"mut",    .Mut},
-    //     .{"if",     .If},
-    //     .{"else",   .Else},
-    //     .{"while",  .While},
-    //     .{"for",    .For},
-    //     .{"loop",   .Loop},
-    //     .{"impl",   .Impl},
-    // });
-
     pub const keyword_map = std.StaticStringMap(TokenType).initComptime(.{
         .{"true",   .True},
         .{"false",  .False},
