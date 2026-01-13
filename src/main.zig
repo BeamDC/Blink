@@ -1,14 +1,24 @@
 const std = @import("std");
-const tokenization = @import("tokenization/lexer.zig");
+const lexer = @import("tokenization/lexer.zig").lexer;
 
 pub fn main() !void {
-    var lex = tokenization.lexer {
-        .src = "",
-        .start = 0,
-        .current = 0,
-    };
-    std.debug.print("Lexer:\n{any}", .{lex});
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
+    const alloc = gpa.allocator();
 
-    const tokens = try lex.tokenize();
-    std.debug.print("Tokens:\n{any}", .{tokens});
+    var lex = lexer.init(
+        \\fn main()  {
+        \\  const pi = 3.14159265;
+        \\}
+    );
+    // std.debug.print("Lexer:\n{any}\n", .{lex});
+
+    var timer = try std.time.Timer.start();
+    const tokens = try lex.tokenize(alloc);
+    const elapsed: f64 = @floatFromInt(timer.read());
+
+    for (tokens) |token| {
+        std.debug.print("{f}\n", .{token});
+    }
+
+    std.debug.print("tokenized in: {d:.2} microseconds\n", .{elapsed / 1000});
 }
