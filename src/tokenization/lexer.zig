@@ -144,21 +144,16 @@ pub const lexer = struct {
         }
     }
 
-    /// Tokenize the entire input stream, returning the slice of tokens
-    // pub fn tokenize(self: *lexer, alloc: std.mem.Allocator) ![]Token {
+    /// Tokenize the entire input stream,
+    ///  writing all tokens to the provided buffer,
+    ///  and returning the number of tokens written
     pub fn tokenize(self: *lexer, tokens: []Token) !usize {
-        // var tokens: std.ArrayList(Token) = .empty;
-        // defer _ = tokens.deinit(alloc);
-
         var i: usize = 0;
         while (!self.eof()) : (i+=1) {
             const next = try self.nextToken();
             if (next == null) break;
-            // try tokens.append(alloc, next.?);
             tokens[i] = next.?;
         }
-
         return i;
-        // return tokens[0..i];
     }
 };

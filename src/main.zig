@@ -4,7 +4,6 @@ const lexer = @import("tokenization/lexer.zig").lexer;
 const zbench = @import("zbench");
 
 pub fn main() !void {
-    // var gpa: std.heap.DebugAllocator(.{}) = .init;
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     const alloc = gpa.allocator();
@@ -20,11 +19,12 @@ pub fn main() !void {
     const content: []const u8 = try file.readToEndAlloc(alloc, file_size);
     defer alloc.free(content);
 
+    // construct the lexer
     var lex = lexer.init(content);
-    // std.debug.print("Lexer:\n{any}\n", .{lex});
 
+    // tokenize
     var timer = try std.time.Timer.start();
-    const tokens: []Token = try alloc.alloc(Token, lex.src.len);
+    const tokens: []Token = try alloc.alloc(Token, lex.src.len / 2 + 1);
     const num_tokens = try lex.tokenize(tokens);
     defer alloc.free(tokens);
     const elapsed: f64 = @floatFromInt(timer.read());
