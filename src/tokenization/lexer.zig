@@ -3,30 +3,30 @@ const Token = @import("token.zig").Token;
 const TokenType = @import("token.zig").TokenType;
 const TokenizationError = @import("error.zig").TokenizationError;
 
-pub const lexer = struct {
+pub const Lexer = struct {
     src: []const u8,
     pos: usize = 0,
 
-    pub fn init(src: []const u8) lexer {
-        return lexer { .src = src };
+    pub fn init(src: []const u8) Lexer {
+        return Lexer { .src = src };
     }
 
     /// returns true if the end of the file has been reached,
     /// otherwise returns false
-    inline fn eof(self: *lexer) bool {
+    inline fn eof(self: *Lexer) bool {
         return self.pos >= self.src.len;
     }
 
     /// returns the next character in the input stream,
     /// returns null if the end of the file has been reached
-    inline fn peek(self: *lexer) ?u8 {
+    inline fn peek(self: *Lexer) ?u8 {
         if (self.eof()) return null;
         return self.src[self.pos];
     }
 
     /// return the next character in the input stream, and increment the
     /// position of the lexer.
-    inline fn advance(self: *lexer) u8 {
+    inline fn advance(self: *Lexer) u8 {
         const c = self.src[self.pos];
         self.pos += 1;
         return c;
@@ -43,7 +43,7 @@ pub const lexer = struct {
     }
 
     /// ship any upcoming whitespace chars
-    inline fn skipWhitespace(self: *lexer) void {
+    inline fn skipWhitespace(self: *Lexer) void {
         while (!self.eof() and std.ascii.isWhitespace(self.src[self.pos])) {
             self.pos += 1;
         }
@@ -51,7 +51,7 @@ pub const lexer = struct {
 
     /// attempts to read some symbol from the input stream,
     /// if a valid symbol cannot be read, null is returned instead
-    fn symbol(self: *lexer, start: usize) !Token {
+    fn symbol(self: *Lexer, start: usize) !Token {
         const max_len = @min(TokenType.longest_symbol, self.src.len - start);
         var len = max_len;
         while (len > 0) : (len -= 1) {
@@ -72,12 +72,12 @@ pub const lexer = struct {
     /// if a valid keyword cannot be read, then any valid chars
     /// up until that point are treated as an identifier,
     /// if there were no valid chars when null is returned instead.
-    fn keywordOrIdent(self: *lexer, start: usize) !Token {
+    fn keywordOrIdent(self: *Lexer, start: usize) !Token {
         // consume until no more valid chars
         while (!self.eof()) {
             const c = self.peek();
             if (c == null) return TokenizationError.UnexpectedEof;
-            if (!lexer.isIdentChar(c.?)) break;
+            if (!Lexer.isIdentChar(c.?)) break;
             _ = self.advance();
         }
 
@@ -93,7 +93,7 @@ pub const lexer = struct {
     /// attempts to read some number from the input stream,
     /// if any invalid chars are found while constructing the number,
     /// an error will be returned instead.
-    fn number(self: *lexer, start: usize) !Token {
+    fn number(self: *Lexer, start: usize) !Token {
         while (!self.eof()) {
             const c = self.peek();
             if (c == null) return TokenizationError.UnexpectedEof;
@@ -130,7 +130,7 @@ pub const lexer = struct {
 
     /// Attempts to return the next token from the input stream,
     /// will return any errors that are encountered
-    fn nextToken(self: *lexer) !?Token {
+    fn nextToken(self: *Lexer) !?Token {
         self.skipWhitespace();
         if (self.eof()) return null;
 
@@ -147,7 +147,7 @@ pub const lexer = struct {
     /// Tokenize the entire input stream,
     ///  writing all tokens to the provided buffer,
     ///  and returning the number of tokens written
-    pub fn tokenize(self: *lexer, tokens: []Token) !usize {
+    pub fn tokenize(self: *Lexer, tokens: []Token) !usize {
         var i: usize = 0;
         while (!self.eof()) : (i+=1) {
             const next = try self.nextToken();

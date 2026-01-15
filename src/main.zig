@@ -1,6 +1,8 @@
 const std = @import("std");
 const Token = @import("tokenization/token.zig").Token;
-const lexer = @import("tokenization/lexer.zig").lexer;
+const Lexer = @import("tokenization/lexer.zig").Lexer;
+const Parser = @import("parsing/parser.zig").Parser;
+
 const zbench = @import("zbench");
 
 pub fn main() !void {
@@ -19,10 +21,10 @@ pub fn main() !void {
     const content: []const u8 = try file.readToEndAlloc(alloc, file_size);
     defer alloc.free(content);
 
-    // construct the lexer
-    var lex = lexer.init(content);
 
     // tokenize
+    var lex = Lexer.init(content);
+
     var timer = try std.time.Timer.start();
     const tokens: []Token = try alloc.alloc(Token, lex.src.len / 2 + 1);
     const num_tokens = try lex.tokenize(tokens);
@@ -35,4 +37,7 @@ pub fn main() !void {
 
     std.debug.print("tokenized in: {d:.2} microseconds\n", .{elapsed / 1000});
     std.debug.print("{d} tokens used, {d} available\n", .{num_tokens + 1, tokens.len});
+
+    // parse
+    // var parser = Parser.init(tokens, num_tokens);
 }

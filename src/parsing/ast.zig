@@ -44,3 +44,4 @@ pub const AstNode = struct {
         right: u32,
     };
 };
+
