@@ -3,7 +3,13 @@ pub const Token = @import("../tokenization/token.zig").Token;
 
 pub const Ast = struct {
     nodes: []AstNode,
-    extra: []u32,
+
+    /// initialize a new Ast with space for n nodes
+    pub fn init(n: usize, alloc: std.mem.Allocator) !Ast {
+        return Ast {
+            .nodes = try alloc.alloc(AstNode, n),
+        };
+    }
 };
 
 pub const AstNode = struct {
