@@ -2,13 +2,20 @@ pub const std = @import("std");
 pub const Token = @import("../tokenization/token.zig").Token;
 
 pub const Ast = struct {
+    alloc: std.mem.Allocator,
     nodes: []AstNode,
+    data: []u32,
 
     /// initialize a new Ast with space for n nodes
     pub fn init(n: usize, alloc: std.mem.Allocator) !Ast {
         return Ast {
             .nodes = try alloc.alloc(AstNode, n),
+            .alloc = alloc,
         };
+    }
+
+    pub fn deinit(self: *Ast) void {
+        self.alloc.free(self.nodes);
     }
 };
 
@@ -46,8 +53,8 @@ pub const AstNode = struct {
     };
 
     pub const Data = struct {
-        left: u32,
-        right: u32,
+        start: u32,
+        end: u32,
     };
 };
 

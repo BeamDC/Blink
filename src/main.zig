@@ -25,19 +25,28 @@ pub fn main() !void {
     // tokenize
     var lex = Lexer.init(content);
 
-    var timer = try std.time.Timer.start();
+    var lexer_timer = try std.time.Timer.start();
     const tokens: []Token = try alloc.alloc(Token, lex.src.len / 2 + 1);
     const num_tokens = try lex.tokenize(tokens);
     defer alloc.free(tokens);
-    const elapsed: f64 = @floatFromInt(timer.read());
+    const lexer_elapsed: f64 = @floatFromInt(lexer_timer.read());
 
     for (tokens[0..num_tokens]) |token| {
         std.debug.print("{f}\n", .{token});
     }
 
-    std.debug.print("tokenized in: {d:.2} microseconds\n", .{elapsed / 1000});
+    std.debug.print("tokenized in: {d:.2} microseconds\n", .{lexer_elapsed / 1000});
     std.debug.print("{d} tokens used, {d} available\n", .{num_tokens + 1, tokens.len});
 
     // parse
-    // var parser = Parser.init(tokens, num_tokens);
+    var parser = Parser.init(tokens, num_tokens, alloc);
+    defer parser.deinit();
+
+    var parse_timer = try std.time.Timer.start();
+    const num_nodes = try parser.parse_root();
+    const parse_elapsed: f64 = @floatFromInt(parse_timer.read());
+
+    std.debug.print("parsed in: {d:.2} microseconds\n", .{parse_elapsed / 1000});
+    std.debug.print("{d} nodes used, {d} available\n", .{num_nodes, parser.ast.nodes.len});
+    std.debug.print("{any}", .{parser.ast.nodes[0..num_nodes]});
 }
