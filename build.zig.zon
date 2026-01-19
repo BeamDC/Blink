@@ -1,6 +1,6 @@
 .{
     .name = .Blink,
-    .fingerprint = 0xa94f12e258420262,
+    .fingerprint = 0xf3f9bad96ad6a7f9,
     // versioning stuff so i dont forget, im not really gonna
     // bother with this until we have somwthing that works.
     // MAJOR CHANGE (0).0.0 large incompatible changes

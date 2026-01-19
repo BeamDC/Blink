@@ -1,7 +1,7 @@
 const std = @import("std");
 const Token = @import("../tokenization/token.zig").Token;
 const TokenType = @import("../tokenization/token.zig").TokenType;
-const Ast = @import("ast.zig").Ast;
+const AstNode = @import("ast.zig").AstNode;
 const ParseError = @import("error.zig").ParseError;
 const Tag = @import("ast.zig").AstNode.Tag;
 
@@ -13,8 +13,6 @@ pub const Parser = @This();
 alloc: std.mem.Allocator,
 /// the list of tokens to be parsed
 tokens: []Token,
-/// the abstract syntax tree
-ast: Ast,
 /// the number of tokens in the token list
 num_tokens: usize,
 /// the current position in the token list
@@ -24,9 +22,6 @@ pub fn init(tokens: []Token, num_tokens: usize, alloc: std.mem.Allocator) Parser
     return Parser {
         .alloc = alloc,
         .tokens = tokens,
-        .ast = Ast.init(num_tokens / 2, alloc) catch {
-            @panic("ast alloc failed");
-        },
         .num_tokens = num_tokens,
         .pos = 0,
     };
@@ -77,42 +72,42 @@ pub fn parse_root(self: *Parser) !usize {
 }
 
 /// parse a function definition from the token stream
-fn parse_fn(self: *Parser) !usize {
+fn parse_fn(self: *Parser) !u32 {
     _ = self;
     return ParseError.UnexpectedToken;
 }
 
 /// parse a constant definition from the token stream
-fn parse_const(self: *Parser) !usize {
+fn parse_const(self: *Parser) !u32 {
     // wip
     // const name = try self.expect(TokenType.Ident);
     // _ = try self.expect(TokenType.Assign);
-    // const expr = self.parse_expr();
+    // const expr = try self.parse_expr();
     // _ = try self.expect(TokenType.Semicolon);
     _ = self;
     return ParseError.UnexpectedToken;
 }
 
 /// parse a let statement from the token stream
-fn parse_let(self: Parser) !usize {
+fn parse_let(self: Parser) !u32 {
     _ = self;
     return ParseError.UnexpectedToken;
 }
 
 /// parse an if statement from the token stream
-fn parse_if(self: Parser) !usize {
+fn parse_if(self: Parser) !u32 {
     _ = self;
     return ParseError.UnexpectedToken;
 }
 
 /// parse a return statement from the token stream
-fn parse_ret(self: Parser) !usize {
+fn parse_ret(self: Parser) !u32 {
     _ = self;
     return ParseError.UnexpectedToken;
 }
 
 /// parse an expression from the token stream
-fn parse_expr(self: *Parser) !usize {
+fn parse_expr(self: *Parser) !u32 {
     _ = self;
     return ParseError.UnexpectedToken;
 }

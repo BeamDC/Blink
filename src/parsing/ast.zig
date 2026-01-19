@@ -1,60 +1,64 @@
 pub const std = @import("std");
 pub const Token = @import("../tokenization/token.zig").Token;
+pub const TokenType = @import("../tokenization/token.zig").TokenType;
 
-pub const Ast = struct {
-    alloc: std.mem.Allocator,
-    nodes: []AstNode,
-    data: []u32,
+pub const AstNode = union(enum) {
+    // statements
+    @"const": ConstStmt,
+    let: LetStmt,
+    @"if": IfStmt,
+    ret: RetStmt,
+    @"fn": FnStmt,
 
-    /// initialize a new Ast with space for n nodes
-    pub fn init(n: usize, alloc: std.mem.Allocator) !Ast {
-        return Ast {
-            .nodes = try alloc.alloc(AstNode, n),
-            .alloc = alloc,
-        };
-    }
+    // expressions
+    type: TypeExpr,
+    block: Block,
+    unary: UnOp,
+    binary: BinOp,
 
-    pub fn deinit(self: *Ast) void {
-        self.alloc.free(self.nodes);
-    }
-};
-
-pub const AstNode = struct {
-    tag: Tag,
-    token: Token,
-    data: Data,
-
-    pub const Tag = enum(u8) {
-        root,
-
-        // logical / comparison operators
-        eq,
-        neq,
-        gt,
-        lt,
-        geq,
-        leq,
-
-        // mathematical operators
-        add,
-        sub,
-        mul,
-        div,
-        mod,
-
-        // todo: bitwise operators
-
-        // control flow
-        @"const",
-        @"if",
-        @"fn",
-        call,
-        ret,
+    pub const ConstStmt = struct {
+        name: Token,
+        value: *AstNode,
     };
 
-    pub const Data = struct {
-        start: u32,
-        end: u32,
+    pub const LetStmt = struct {
+        name: Token,
+        value: *AstNode,
+    };
+
+    pub const IfStmt = struct {
+        clause: *AstNode,
+        then: *AstNode,
+        @"else": *AstNode,
+    };
+
+    pub const RetStmt = struct {
+        value: *AstNode,
+    };
+
+    pub const FnStmt = struct {
+        name: Token,
+        params: []const *AstNode,
+        body: *AstNode,
+    };
+
+    pub const TypeExpr = struct {
+        name: Token,
+        nullable: bool,
+    };
+
+    pub const Block = struct {
+        statements: []const *AstNode,
+    };
+
+    pub const UnOp = struct {
+        op: Token,
+        operand: *AstNode,
+    };
+
+    pub const BinOp = struct {
+        op: Token,
+        left: *AstNode,
+        right: *AstNode,
     };
 };
-
