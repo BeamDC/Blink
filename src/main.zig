@@ -2,6 +2,7 @@ const std = @import("std");
 const Token = @import("tokenization/token.zig").Token;
 const Lexer = @import("tokenization/lexer.zig").Lexer;
 const Parser = @import("parsing/parser.zig").Parser;
+const AstNode = @import("parsing/ast.zig").AstNode;
 
 const zbench = @import("zbench");
 
@@ -40,13 +41,11 @@ pub fn main() !void {
 
     // parse
     var parser = Parser.init(tokens, num_tokens, alloc);
-    defer parser.deinit();
 
     var parse_timer = try std.time.Timer.start();
-    const num_nodes = try parser.parse_root();
+    const root = try parser.parse_root();
     const parse_elapsed: f64 = @floatFromInt(parse_timer.read());
 
     std.debug.print("parsed in: {d:.2} microseconds\n", .{parse_elapsed / 1000});
-    std.debug.print("{d} nodes used, {d} available\n", .{num_nodes, parser.ast.nodes.len});
-    std.debug.print("{any}", .{parser.ast.nodes[0..num_nodes]});
+    std.debug.print("{f}", .{root});
 }

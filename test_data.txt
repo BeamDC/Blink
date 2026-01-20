@@ -2,8 +2,8 @@ const pi = 3.14159265;
 const tau = pi * 2;
 
 fn main() {
-    let x = 30;
-    let y = factorial(30);
+    let x = 10;
+    let y = factorial(10);
 }
 
 fn factorial(n: u32) u32 {

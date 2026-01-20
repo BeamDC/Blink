@@ -3,6 +3,8 @@ pub const Token = @import("../tokenization/token.zig").Token;
 pub const TokenType = @import("../tokenization/token.zig").TokenType;
 
 pub const AstNode = union(enum) {
+    root: Root,
+
     // statements
     @"const": ConstStmt,
     let: LetStmt,
@@ -16,30 +18,35 @@ pub const AstNode = union(enum) {
     unary: UnOp,
     binary: BinOp,
 
+    /// the root node of a file, contains pointers to all top level nodes.
+    pub const Root = struct {
+        nodes: []const AstNode,
+    };
+
     pub const ConstStmt = struct {
         name: Token,
-        value: *AstNode,
+        value: *const AstNode,
     };
 
     pub const LetStmt = struct {
         name: Token,
-        value: *AstNode,
+        value: *const AstNode,
     };
 
     pub const IfStmt = struct {
-        clause: *AstNode,
-        then: *AstNode,
-        @"else": *AstNode,
+        clause: *const AstNode,
+        then: *const AstNode,
+        @"else": *const AstNode,
     };
 
     pub const RetStmt = struct {
-        value: *AstNode,
+        value: *const AstNode,
     };
 
     pub const FnStmt = struct {
         name: Token,
-        params: []const *AstNode,
-        body: *AstNode,
+        params: []const AstNode,
+        body: *const AstNode,
     };
 
     pub const TypeExpr = struct {
@@ -48,17 +55,21 @@ pub const AstNode = union(enum) {
     };
 
     pub const Block = struct {
-        statements: []const *AstNode,
+        statements: []const AstNode,
     };
 
     pub const UnOp = struct {
         op: Token,
-        operand: *AstNode,
+        operand: *const AstNode,
     };
 
     pub const BinOp = struct {
         op: Token,
-        left: *AstNode,
-        right: *AstNode,
+        left: *const AstNode,
+        right: *const AstNode,
     };
+
+    pub fn format(self: AstNode, writer: *std.io.Writer) !void {
+        try writer.print("{s}", .{@tagName(self)});
+    }
 };
