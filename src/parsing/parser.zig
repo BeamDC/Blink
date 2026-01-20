@@ -24,6 +24,12 @@ pub fn init(tokens: []Token, num_tokens: usize, alloc: std.mem.Allocator) Parser
     };
 }
 
+fn allocNode(self: *Parser, node: AstNode) !*AstNode {
+    const ptr = try self.alloc.create(AstNode);
+    ptr.* = node;
+    return ptr;
+}
+
 inline fn end(self: *Parser) bool {
     return self.pos >= self.num_tokens;
 }
@@ -73,90 +79,133 @@ fn binary_precedence(ttype: TokenType) ?u8 {
 }
 
 /// parse the root file of a project, writing the parsed nodes to the given ArrayList.
-pub fn parse_root(self: *Parser) !AstNode {
-    var nodes = try std.ArrayList(AstNode).initCapacity(self.alloc, self.num_tokens / 3);
+pub fn parse_root(self: *Parser) !*AstNode {
+    var nodes = try std.ArrayList(*AstNode).initCapacity(self.alloc, self.num_tokens / 3);
     defer nodes.deinit(self.alloc);
 
     // parse until no tokens remain
-    while (!self.end()) : (self.pos += 1) {
+    // while (!self.end()) : (self.pos += 1) {
+    while (!self.end()) {
         switch (self.tokens[self.pos].type) {
             .Const => try nodes.append(self.alloc, try self.parse_const()),
-            else => return ParseError.UnexpectedToken,
+            .Fn => try nodes.append(self.alloc, try self.parse_fn()),
+            else => {
+                std.debug.print("{any}", .{self.peek()});
+                return ParseError.UnexpectedToken;
+            },
         }
     }
 
-    return AstNode {
+    return self.allocNode(AstNode {
         .root = AstNode.Root {
             .nodes = try nodes.toOwnedSlice(self.alloc)
         }
-    };
+    });
 }
 
 /// parse a function definition from the token stream
-fn parse_fn(self: *Parser) !AstNode {
+fn parse_fn(self: *Parser) !*AstNode {
     _ = self;
     return ParseError.UnexpectedToken;
 }
 
 /// parse a constant definition from the token stream
-fn parse_const(self: *Parser) !AstNode {
+fn parse_const(self: *Parser) !*AstNode {
     _ = try self.expect(TokenType.Const);
     const name = try self.expect(TokenType.Ident);
     _ = try self.expect(TokenType.Assign);
     const expr = try self.parse_expr();
     _ = try self.expect(TokenType.Semicolon);
 
-    return AstNode {
+    return self.allocNode(AstNode {
         .@"const" = AstNode.ConstStmt {
             .name = name,
-            .value = &expr,
+            .value = expr,
         }
-    };
+    });
 }
 
 /// parse a let statement from the token stream
-fn parse_let(self: Parser) !AstNode {
+fn parse_let(self: Parser) !*AstNode {
     _ = try self.expect(TokenType.Let);
     const name = try self.expect(TokenType.Ident);
     _ = try self.expect(TokenType.Assign);
     const expr = try self.parse_expr();
     _ = try self.expect(TokenType.Semicolon);
 
-    return AstNode {
+    return self.allocNode(AstNode {
         .let = AstNode.LetStmt {
             .name = name,
             .value = &expr,
         }
-    };
+    });
 }
 
 /// parse an if statement from the token stream
-fn parse_if(self: Parser) !AstNode {
+fn parse_if(self: Parser) !*AstNode {
     _ = self;
     return ParseError.UnexpectedToken;
 }
 
 /// parse a return statement from the token stream
-fn parse_ret(self: Parser) !AstNode {
+fn parse_ret(self: Parser) !*AstNode {
     _ = try self.expect(TokenType.Ret);
     const expr = try self.parse_expr();
     _ = try self.expect(TokenType.Semicolon);
 
-    return AstNode {
+    return self.allocNode(AstNode {
         .ret = AstNode.RetStmt {
-            .value = &expr,
+            .value = expr,
         }
+    });
+}
+
+fn primary(self: *Parser) !*AstNode {
+    const tok = self.advance();
+    return switch (tok.type) {
+        .Numeric => return self.allocNode(.{ .literal = .{
+            .val = tok,
+        }}),
+        .Ident => return self.allocNode(.{ .ident = .{
+            .name = tok,
+        }}),
+        else => ParseError.UnexpectedToken,
     };
 }
 
+// /// helper for expression parsing
+fn expression(self: *Parser, min_prec: u8) !*AstNode {
+    var result = try self.primary();
+
+    while (true) {
+        const current = self.peek();
+        if (current == null) return ParseError.UnexpectedEndOfTokens;
+
+        const prec = binary_precedence(current.?.type);
+        if (prec == null or prec.? < min_prec) break;
+
+        _ = self.advance();
+
+        const rhs = try self.expression(prec.?);
+
+        result = try self.allocNode(.{
+            .binary = .{
+                .op = current.?,
+                .left = result,
+                .right = rhs,
+            }
+        });
+    }
+    return result;
+}
+
 /// parse an expression from the token stream
-fn parse_expr(self: *Parser) !AstNode {
-    _ = self;
-    return ParseError.UnexpectedToken;
+fn parse_expr(self: *Parser) !*AstNode {
+    return self.expression(0);
 }
 
 /// parse a block from the token stream
-fn parse_block(self: *Parser) !AstNode {
+fn parse_block(self: *Parser) !*AstNode {
     _ = self;
     return ParseError.UnexpectedToken;
 }

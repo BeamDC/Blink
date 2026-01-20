@@ -15,28 +15,30 @@ pub const AstNode = union(enum) {
     // expressions
     type: TypeExpr,
     block: Block,
+    literal: Literal,
+    ident: Ident,
     unary: UnOp,
     binary: BinOp,
 
     /// the root node of a file, contains pointers to all top level nodes.
     pub const Root = struct {
-        nodes: []const AstNode,
+        nodes: []const *AstNode,
     };
 
     pub const ConstStmt = struct {
         name: Token,
-        value: *const AstNode,
+        value: *AstNode,
     };
 
     pub const LetStmt = struct {
         name: Token,
-        value: *const AstNode,
+        value: *AstNode,
     };
 
     pub const IfStmt = struct {
-        clause: *const AstNode,
-        then: *const AstNode,
-        @"else": *const AstNode,
+        clause: *AstNode,
+        then: *AstNode,
+        @"else": *AstNode,
     };
 
     pub const RetStmt = struct {
@@ -45,8 +47,8 @@ pub const AstNode = union(enum) {
 
     pub const FnStmt = struct {
         name: Token,
-        params: []const AstNode,
-        body: *const AstNode,
+        params: []const *AstNode,
+        body: *AstNode,
     };
 
     pub const TypeExpr = struct {
@@ -55,21 +57,41 @@ pub const AstNode = union(enum) {
     };
 
     pub const Block = struct {
-        statements: []const AstNode,
+        statements: []const *AstNode,
+    };
+
+    pub const Literal = struct {
+        val: Token,
+    };
+
+    pub const Ident = struct {
+        name: Token,
     };
 
     pub const UnOp = struct {
         op: Token,
-        operand: *const AstNode,
+        operand: *AstNode,
     };
 
     pub const BinOp = struct {
         op: Token,
-        left: *const AstNode,
-        right: *const AstNode,
+        left: *AstNode,
+        right: *AstNode,
     };
 
     pub fn format(self: AstNode, writer: *std.io.Writer) !void {
-        try writer.print("{s}", .{@tagName(self)});
+        switch (self) {
+            .root => |r| {
+                for (r.nodes) |node| {
+                    try writer.print("{f}\n", .{node.*});
+                }
+            },
+            .@"const" => |c| try writer.print("const {s} = {f}", .{c.name.raw, c.value}),
+            .literal => |l| try writer.print("{s}", .{l.val.raw}),
+            .ident => |i| try writer.print("{s}", .{i.name.raw}),
+            .unary => |u| try writer.print("{s}({f})", .{@tagName(u.op.type), u.operand.*}),
+            .binary => |b| try writer.print("{s}({f}, {f})", .{@tagName(b.op.type), b.left.*, b.right.*}),
+            else => try writer.print("TODO: impl format for {s}", .{@tagName(self)}),
+        }
     }
 };
