@@ -52,12 +52,15 @@ fn peek(self: *Parser) ?Token {
 fn expect(self: *Parser, ttype: TokenType) !Token {
     const peeked = self.peek();
     if (peeked == null) return ParseError.UnexpectedEndOfTokens;
-    if (peeked.?.type != ttype) return ParseError.UnexpectedToken;
+    if (peeked.?.type != ttype) {
+        std.debug.print("{f}", .{peeked.?});
+        return ParseError.UnexpectedToken;
+    }
     return self.advance();
 }
 
 /// returns the precedence of a binary operator.
-fn binary_precedence(ttype: TokenType) ?u8 {
+fn binaryPrecedence(ttype: TokenType) ?u8 {
     return switch (ttype) {
         .Assign, .CompAdd, .CompSub,
         .CompMul, .CompDiv, .CompMod,
@@ -79,46 +82,88 @@ fn binary_precedence(ttype: TokenType) ?u8 {
 }
 
 /// parse the root file of a project, writing the parsed nodes to the given ArrayList.
-pub fn parse_root(self: *Parser) !*AstNode {
+pub fn parseRoot(self: *Parser) !*AstNode {
     var nodes = try std.ArrayList(*AstNode).initCapacity(self.alloc, self.num_tokens / 3);
     defer nodes.deinit(self.alloc);
 
     // parse until no tokens remain
-    // while (!self.end()) : (self.pos += 1) {
     while (!self.end()) {
-        switch (self.tokens[self.pos].type) {
-            .Const => try nodes.append(self.alloc, try self.parse_const()),
-            .Fn => try nodes.append(self.alloc, try self.parse_fn()),
+        const node = try switch (self.tokens[self.pos].type) {
+            .Const => self.parseConst(),
+            .Fn => self.parseFn(),
             else => {
                 std.debug.print("{any}", .{self.peek()});
                 return ParseError.UnexpectedToken;
             },
-        }
+        };
+        try nodes.append(self.alloc, node);
     }
 
-    return self.allocNode(AstNode {
+    return self.allocNode(.{
         .root = AstNode.Root {
             .nodes = try nodes.toOwnedSlice(self.alloc)
         }
     });
 }
 
+fn parseParamList(self: *Parser) !*AstNode {
+    var params = try std.ArrayList(*AstNode).initCapacity(self.alloc, 1);
+    defer params.deinit(self.alloc);
+
+    _ = try self.expect(.Lparen);
+    while (true) {
+        // this code is horrendous, i cant wait to come back and clean it up
+        if (self.peek() == null) return ParseError.UnexpectedEndOfTokens;
+        if (self.peek().?.type == .Rparen) break;
+
+        const name = try self.expect(.Ident);
+        _ = try self.expect(.Colon);
+        const ty = try self.parseTypeExpr();
+        try params.append(self.alloc, try self.allocNode(.{
+            .param = .{
+                .name = name,
+                .type = ty,
+            }
+        }));
+        if (self.peek() == null) return ParseError.UnexpectedEndOfTokens;
+        if (self.peek().?.type == .Comma) _ = self.advance();
+    }
+    _ = try self.expect(.Rparen);
+
+    return self.allocNode(.{
+        .param_list = .{
+            .params = try params.toOwnedSlice(self.alloc),
+        }
+    });
+}
+
 /// parse a function definition from the token stream
-fn parse_fn(self: *Parser) !*AstNode {
-    _ = self;
-    return ParseError.UnexpectedToken;
+fn parseFn(self: *Parser) !*AstNode {
+    _ = try self.expect(.Fn);
+    const name = try self.expect(.Ident);
+    const params = try self.parseParamList();
+    const ret = try self.parseTypeExpr();
+    const body = try self.parseBlock();
+    return self.allocNode(.{
+        .@"fn" = .{
+            .name = name,
+            .params = params,
+            .ret = ret,
+            .body = body,
+        }
+    });
 }
 
 /// parse a constant definition from the token stream
-fn parse_const(self: *Parser) !*AstNode {
-    _ = try self.expect(TokenType.Const);
-    const name = try self.expect(TokenType.Ident);
-    _ = try self.expect(TokenType.Assign);
-    const expr = try self.parse_expr();
-    _ = try self.expect(TokenType.Semicolon);
+fn parseConst(self: *Parser) !*AstNode {
+    _ = try self.expect(.Const);
+    const name = try self.expect(.Ident);
+    _ = try self.expect(.Assign);
+    const expr = try self.parseExpr();
+    _ = try self.expect(.Semicolon);
 
-    return self.allocNode(AstNode {
-        .@"const" = AstNode.ConstStmt {
+    return self.allocNode(.{
+        .@"const" = .{
             .name = name,
             .value = expr,
         }
@@ -126,50 +171,105 @@ fn parse_const(self: *Parser) !*AstNode {
 }
 
 /// parse a let statement from the token stream
-fn parse_let(self: Parser) !*AstNode {
-    _ = try self.expect(TokenType.Let);
-    const name = try self.expect(TokenType.Ident);
-    _ = try self.expect(TokenType.Assign);
-    const expr = try self.parse_expr();
-    _ = try self.expect(TokenType.Semicolon);
+fn parseLet(self: *Parser) !*AstNode {
+    _ = try self.expect(.Let);
+    const name = try self.expect(.Ident);
+    _ = try self.expect(.Assign);
+    const expr = try self.parseExpr();
+    _ = try self.expect(.Semicolon);
 
-    return self.allocNode(AstNode {
-        .let = AstNode.LetStmt {
+    return self.allocNode(.{
+        .let = .{
             .name = name,
-            .value = &expr,
-        }
-    });
-}
-
-/// parse an if statement from the token stream
-fn parse_if(self: Parser) !*AstNode {
-    _ = self;
-    return ParseError.UnexpectedToken;
-}
-
-/// parse a return statement from the token stream
-fn parse_ret(self: Parser) !*AstNode {
-    _ = try self.expect(TokenType.Ret);
-    const expr = try self.parse_expr();
-    _ = try self.expect(TokenType.Semicolon);
-
-    return self.allocNode(AstNode {
-        .ret = AstNode.RetStmt {
             .value = expr,
         }
     });
 }
 
-fn primary(self: *Parser) !*AstNode {
+/// parse an if statement from the token stream
+fn parseIf(self: *Parser) ParseError!*AstNode {
+    _ = try self.expect(.If);
+    const clause = try self.parseExpr();
+    const then = try self.parseBlock();
+    const peeked = self.peek();
+    if (peeked == null) return ParseError.UnexpectedEndOfTokens;
+    var @"else": ?*AstNode = null;
+    if (peeked.?.type == .Else) {
+        _ = self.advance();
+        @"else" = switch (self.advance().type) {
+            .If => try self.parseIf(),
+            .Lbrace => try self.parseBlock(),
+            else => return ParseError.UnexpectedToken,
+        };
+    }
+
+    return self.allocNode(.{
+        .@"if" = .{
+            .clause = clause,
+            .then = then,
+            .@"else" = @"else",
+        }}
+    );
+}
+
+/// parse a return statement from the token stream
+fn parseRet(self: *Parser) !*AstNode {
+    _ = try self.expect(.Ret);
+    const expr = try self.parseExpr();
+    _ = try self.expect(.Semicolon);
+
+    return self.allocNode(.{
+        .ret = .{
+            .value = expr,
+        }
+    });
+}
+
+fn primary(self: *Parser) (ParseError || error{OutOfMemory})!*AstNode {
     const tok = self.advance();
     return switch (tok.type) {
         .Numeric => return self.allocNode(.{ .literal = .{
             .val = tok,
         }}),
-        .Ident => return self.allocNode(.{ .ident = .{
-            .name = tok,
-        }}),
-        else => ParseError.UnexpectedToken,
+        .Ident => {
+            if (self.peek() == null) return ParseError.UnexpectedEndOfTokens;
+            if (self.peek().?.type == .Lparen) {
+                var args = try std.ArrayList(*AstNode).initCapacity(self.alloc, 1);
+                defer args.deinit(self.alloc);
+
+                _ = try self.expect(.Lparen);
+                while (true) {
+                    // this code is horrendous, i cant wait to come back and clean it up
+                    if (self.peek() == null) return ParseError.UnexpectedEndOfTokens;
+                    if (self.peek().?.type == .Rparen) break;
+
+                    try args.append(self.alloc, try self.parseExpr());
+                    if (self.peek() == null) return ParseError.UnexpectedEndOfTokens;
+                    if (self.peek().?.type == .Comma) _ = self.advance();
+                }
+                _ = try self.expect(.Rparen);
+
+                return self.allocNode(.{
+                    .call = .{
+                        .name = tok,
+                        .args = try args.toOwnedSlice(self.alloc),
+                    }
+                });
+            }
+
+            return self.allocNode(.{ .ident = .{
+                .name = tok,
+            }});
+        },
+        .Lparen => {
+            const expr = self.expression(0);
+            _ = try self.expect(.Rparen);
+            return expr;
+        },
+        else => {
+            std.debug.print("{f}", .{tok});
+            return ParseError.UnexpectedToken;
+        },
     };
 }
 
@@ -181,7 +281,7 @@ fn expression(self: *Parser, min_prec: u8) !*AstNode {
         const current = self.peek();
         if (current == null) return ParseError.UnexpectedEndOfTokens;
 
-        const prec = binary_precedence(current.?.type);
+        const prec = binaryPrecedence(current.?.type);
         if (prec == null or prec.? < min_prec) break;
 
         _ = self.advance();
@@ -200,12 +300,44 @@ fn expression(self: *Parser, min_prec: u8) !*AstNode {
 }
 
 /// parse an expression from the token stream
-fn parse_expr(self: *Parser) !*AstNode {
+fn parseExpr(self: *Parser) !*AstNode {
     return self.expression(0);
 }
 
+fn parseTypeExpr(self: *Parser) !*AstNode {
+    const name = try self.expect(.Ident); 
+    
+    return self.allocNode(.{
+        .type = .{
+            // todo : actually handle nullable types, as well as errors.
+            .nullable = false,
+            .name = name,
+        }
+    });
+}
+
 /// parse a block from the token stream
-fn parse_block(self: *Parser) !*AstNode {
-    _ = self;
-    return ParseError.UnexpectedToken;
+fn parseBlock(self: *Parser) !*AstNode {
+    _ = try self.expect(.Lbrace);
+
+    var nodes = try std.ArrayList(*AstNode).initCapacity(self.alloc, 1);
+    defer nodes.deinit(self.alloc);
+
+    while (self.peek() != null and self.peek().?.type != .Rbrace) {
+        const node = try switch (self.tokens[self.pos].type) {
+            .Let => self.parseLet(),
+            .If => self.parseIf(),
+            .Ret => self.parseRet(),
+            else => self.parseExpr(),
+        };
+        try nodes.append(self.alloc, node);
+    }
+
+    _ = try self.expect(.Rbrace);
+
+    return self.allocNode(.{
+        .block = .{
+            .statements = try nodes.toOwnedSlice(self.alloc),
+        }
+    });
 }

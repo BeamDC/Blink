@@ -11,12 +11,15 @@ pub const AstNode = union(enum) {
     @"if": IfStmt,
     ret: RetStmt,
     @"fn": FnStmt,
+    param: Param,
+    param_list: ParamList,
 
     // expressions
     type: TypeExpr,
     block: Block,
     literal: Literal,
     ident: Ident,
+    call: FnCall,
     unary: UnOp,
     binary: BinOp,
 
@@ -38,7 +41,7 @@ pub const AstNode = union(enum) {
     pub const IfStmt = struct {
         clause: *AstNode,
         then: *AstNode,
-        @"else": *AstNode,
+        @"else": ?*AstNode,
     };
 
     pub const RetStmt = struct {
@@ -47,8 +50,18 @@ pub const AstNode = union(enum) {
 
     pub const FnStmt = struct {
         name: Token,
-        params: []const *AstNode,
+        params: *AstNode,
+        ret: *AstNode,
         body: *AstNode,
+    };
+
+    pub const Param = struct {
+        name: Token,
+        type: *AstNode,
+    };
+
+    pub const ParamList = struct {
+        params: []const *AstNode,
     };
 
     pub const TypeExpr = struct {
@@ -66,6 +79,11 @@ pub const AstNode = union(enum) {
 
     pub const Ident = struct {
         name: Token,
+    };
+
+    pub const FnCall = struct {
+        name: Token,
+        args: []const *AstNode,
     };
 
     pub const UnOp = struct {

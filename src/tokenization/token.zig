@@ -16,6 +16,7 @@ pub const TokenType = enum(u16) {
     BackSlash,
     Colon,
     Semicolon,
+    Comma,
     Assign,
 
     Arrow,
@@ -112,6 +113,7 @@ pub const TokenType = enum(u16) {
         .{"\\", .BackSlash},
         .{":", .Colon},
         .{";", .Semicolon},
+        .{",", .Comma},
         .{"=", .Assign},
         .{"->", .Arrow},
         .{"::", .Path},

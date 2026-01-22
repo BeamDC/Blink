@@ -21,7 +21,6 @@ pub fn main() !void {
 
     const content: []const u8 = try file.readToEndAlloc(alloc, file_size);
 
-
     // tokenize
     var lex = Lexer.init(content);
 
@@ -43,7 +42,7 @@ pub fn main() !void {
     var parser = Parser.init(tokens, num_tokens, alloc);
 
     var parse_timer = try std.time.Timer.start();
-    const root = try parser.parse_root();
+    const root = try parser.parseRoot();
     const parse_elapsed: f64 = @floatFromInt(parse_timer.read());
 
     std.debug.print("parsed in: {d:.2} microseconds\n", .{parse_elapsed / 1000});
