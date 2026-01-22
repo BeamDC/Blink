@@ -196,7 +196,7 @@ fn parseIf(self: *Parser) ParseError!*AstNode {
     var @"else": ?*AstNode = null;
     if (peeked.?.type == .Else) {
         _ = self.advance();
-        @"else" = switch (self.advance().type) {
+        @"else" = switch (self.tokens[self.pos].type) {
             .If => try self.parseIf(),
             .Lbrace => try self.parseBlock(),
             else => return ParseError.UnexpectedToken,
