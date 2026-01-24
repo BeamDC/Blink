@@ -125,13 +125,13 @@ pub const AstNode = union(enum) {
                 try i.clause.formatIndented(writer, indent);
                 try writer.print(" then:\n", .{});
 
-                try i.then.formatIndented(writer, indent + 1);
+                try i.then.formatIndented(writer, indent);
 
                 if (i.@"else") |else_block| {
                     try writer.writeByte('\n');
                     try writeIndent(writer, indent);
                     try writer.print("else:\n", .{});
-                    try else_block.formatIndented(writer, indent + 1);
+                    try else_block.formatIndented(writer, indent);
                 }
             },
             .ret => |r| {

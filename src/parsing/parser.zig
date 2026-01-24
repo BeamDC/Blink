@@ -225,7 +225,7 @@ fn parseRet(self: *Parser) !*AstNode {
     });
 }
 
-fn primary(self: *Parser) (ParseError || error{OutOfMemory})!*AstNode {
+fn primary(self: *Parser) ParseError!*AstNode {
     const tok = self.advance();
     return switch (tok.type) {
         .Numeric => return self.allocNode(.{ .literal = .{
@@ -325,6 +325,7 @@ fn parseBlock(self: *Parser) !*AstNode {
 
     while (self.peek() != null and self.peek().?.type != .Rbrace) {
         const node = try switch (self.tokens[self.pos].type) {
+            .Const => self.parseConst(),
             .Let => self.parseLet(),
             .If => self.parseIf(),
             .Ret => self.parseRet(),

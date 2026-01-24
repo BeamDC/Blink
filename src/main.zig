@@ -4,8 +4,6 @@ const Lexer = @import("tokenization/lexer.zig").Lexer;
 const Parser = @import("parsing/parser.zig").Parser;
 const AstNode = @import("parsing/ast.zig").AstNode;
 
-const zbench = @import("zbench");
-
 pub fn main() !void {
     var gpa = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer _ = gpa.deinit();
