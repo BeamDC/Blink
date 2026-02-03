@@ -1,1 +1,3 @@
-pub const SemanticError = error {};
+pub const SemanticError = error {
+    NonDeclNode,
+};

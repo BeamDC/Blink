@@ -3,6 +3,7 @@ const Token = @import("tokenization/token.zig").Token;
 const Lexer = @import("tokenization/lexer.zig").Lexer;
 const Parser = @import("parsing/parser.zig").Parser;
 const AstNode = @import("parsing/ast.zig").AstNode;
+const SemanticAnalyser = @import("semantic/analyser.zig").SemanticAnalyser;
 
 pub fn main() !void {
     var gpa = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -44,6 +45,17 @@ pub fn main() !void {
     const parse_elapsed: f64 = @floatFromInt(parse_timer.read());
 
     std.debug.print("parsed in: {d:.2} microseconds\n", .{parse_elapsed / 1000});
-    std.debug.print("{f}", .{root});
+    std.debug.print("{f}\n", .{root});
+    std.debug.print("#########################################\n", .{});
+
+    // semantic analysis
+    var semantic = try SemanticAnalyser.init(alloc);
+
+    var semantic_timer = try std.time.Timer.start();
+    try semantic.analyse(root);
+    const semantic_elapsed: f64 = @floatFromInt(semantic_timer.read());
+
+    std.debug.print("anaylsed in: {d:.2} microseconds\n", .{semantic_elapsed / 1000});
+    std.debug.print("{any}\n", .{semantic.scopes});
     std.debug.print("#########################################\n", .{});
 }
