@@ -35,14 +35,14 @@ inline fn end(self: *Parser) bool {
 }
 
 /// return the next token in the stream if it exists, and advance the parser's position.
-fn advance(self: *Parser) Token {
+inline fn advance(self: *Parser) Token {
     const tok = self.tokens[self.pos];
     self.pos += 1;
     return tok;
 }
 
 /// return the next token in the stream if it exists, without advancing the parser's position.
-fn peek(self: *Parser) ?Token {
+inline fn peek(self: *Parser) ?Token {
     if (self.end()) return null;
     return self.tokens[self.pos];
 }
@@ -329,7 +329,11 @@ fn parseBlock(self: *Parser) !*AstNode {
             .Let => self.parseLet(),
             .If => self.parseIf(),
             .Ret => self.parseRet(),
-            else => self.parseExpr(),
+            else => ex: {
+                const e = self.parseExpr();
+                _ = try self.expect(.Semicolon);
+                break :ex e;
+            },
         };
         try nodes.append(self.alloc, node);
     }
