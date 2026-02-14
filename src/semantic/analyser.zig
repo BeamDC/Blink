@@ -4,6 +4,7 @@ const AstNode = @import("../parsing/ast.zig").AstNode;
 const SemanticError = @import("error.zig").SemanticError;
 const Symbol = @import("symbol.zig").Symbol;
 const Type = @import("symbol.zig").Type;
+const readType = @import("read_type.zig").readType;
 
 pub const SemanticAnalyser = @This();
 
@@ -48,16 +49,24 @@ pub fn analyse(self: *SemanticAnalyser, root: *AstNode) !void {
 
 /// analyze top level nodes to build context on types, functions, etc
 fn analyzeDecl(self: *SemanticAnalyser, node: *AstNode) !void {
+    const ty = try readType(self.alloc, node.*);
     switch (node.*) {
         .@"const" => |n| {
             const symbol = Symbol {
                 .kind = .constant,
-                .type = try Type.create(self.alloc, try infer(n.value)),
+                .type = try Type.create(self.alloc, ty),
                 .node = node,
             };
             try self.global.insert(n.name.raw, symbol);
         },
-        .@"fn" => |_| {},
+        .@"fn" => |n| {
+            const symbol = Symbol {
+                .kind = .function,
+                .type = try Type.create(self.alloc, ty),
+                .node = node,
+            };
+            try self.global.insert(n.name.raw, symbol);
+        },
         else => return,
     }
 }
@@ -66,12 +75,4 @@ fn analyzeDecl(self: *SemanticAnalyser, node: *AstNode) !void {
 fn analyzeNode(self: *SemanticAnalyser, node: *AstNode) !void {
     _ = self;
     _ = node;
-}
-
-/// infers the type of some node
-fn infer(node: *AstNode) !Type {
-    return switch (node.*) {
-        // todo : actually infer the type, we default to void for now
-        else => .{ .primitive = .void },
-    };
 }

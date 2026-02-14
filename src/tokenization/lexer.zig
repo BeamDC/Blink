@@ -50,7 +50,7 @@ inline fn skipWhitespace(self: *Lexer) void {
 }
 
 /// attempts to read some symbol from the input stream,
-/// if a valid symbol cannot be read, null is returned instead
+/// if a valid symbol cannot be read, an error is returned instead
 fn symbol(self: *Lexer, start: usize) !Token {
     const max_len = @min(TokenType.longest_symbol, self.src.len - start);
     var len = max_len;
@@ -71,7 +71,7 @@ fn symbol(self: *Lexer, start: usize) !Token {
 /// attempts to read some keyword or identifier from the input stream,
 /// if a valid keyword cannot be read, then any valid chars
 /// up until that point are treated as an identifier,
-/// if there were no valid chars when null is returned instead.
+/// if there were no valid chars an error is returned instead.
 fn keywordOrIdent(self: *Lexer, start: usize) !Token {
     // consume until no more valid chars
     while (!self.eof()) {
@@ -145,8 +145,8 @@ fn nextToken(self: *Lexer) !?Token {
 }
 
 /// Tokenize the entire input stream,
-///  writing all tokens to the provided buffer,
-///  and returning the number of tokens written
+/// writing all tokens to the provided buffer,
+/// and returning the number of tokens written
 pub fn tokenize(self: *Lexer, tokens: []Token) !usize {
     var i: usize = 0;
     while (!self.eof()) : (i += 1) {

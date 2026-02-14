@@ -1,4 +1,4 @@
-const pi = 3.14159265;
+const pi: f32 = 3.14159265;
 const tau = pi * 2;
 
 fn main() void {

@@ -158,6 +158,16 @@ fn parseFn(self: *Parser) !*AstNode {
 fn parseConst(self: *Parser) !*AstNode {
     _ = try self.expect(.Const);
     const name = try self.expect(.Ident);
+
+    // optional type expression
+    const ty = if (self.peek()) |t| expr: {
+        if (t.type == .Colon) {
+            _ = self.advance();
+            break :expr try self.parseTypeExpr();
+        }
+        break :expr null;
+    } else null;
+
     _ = try self.expect(.Assign);
     const expr = try self.parseExpr();
     _ = try self.expect(.Semicolon);
@@ -165,6 +175,7 @@ fn parseConst(self: *Parser) !*AstNode {
     return self.allocNode(.{
         .@"const" = .{
             .name = name,
+            .type_expr = ty,
             .value = expr,
         }
     });
@@ -174,6 +185,15 @@ fn parseConst(self: *Parser) !*AstNode {
 fn parseLet(self: *Parser) !*AstNode {
     _ = try self.expect(.Let);
     const name = try self.expect(.Ident);
+
+    const ty = if (self.peek()) |t| expr: {
+        if (t.type == .Colon) {
+            _ = self.advance();
+            break :expr try self.parseTypeExpr();
+        }
+        break :expr null;
+    } else null;
+
     _ = try self.expect(.Assign);
     const expr = try self.parseExpr();
     _ = try self.expect(.Semicolon);
@@ -181,6 +201,7 @@ fn parseLet(self: *Parser) !*AstNode {
     return self.allocNode(.{
         .let = .{
             .name = name,
+            .type_expr = ty,
             .value = expr,
         }
     });

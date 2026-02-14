@@ -97,7 +97,7 @@ pub const TokenType = enum(u16) {
 
     /// a map from string representations of symbols and operators,
     /// to their respective TokenType
-    pub const symbol_map= std.StaticStringMap(TokenType).initComptime(.{
+    pub const symbol_map = std.StaticStringMap(TokenType).initComptime(.{
         .{"~", .Tilde},
         .{"!", .Bang},
         .{"@", .At},

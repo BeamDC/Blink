@@ -15,6 +15,11 @@ pub const Scope = struct {
         }
     }
 
+    /// check for some definition of the given name.
+    pub fn get(self: *Scope, name: []const u8) ?Symbol {
+        return self.symbols.get(name);
+    }
+
     pub fn format(self: Scope, writer: *std.io.Writer) !void {
         var iter = self.symbols.iterator();
         while (iter.next()) |entry| {

@@ -30,11 +30,13 @@ pub const AstNode = union(enum) {
 
     pub const ConstStmt = struct {
         name: Token,
+        type_expr: ?*AstNode,
         value: *AstNode,
     };
 
     pub const LetStmt = struct {
         name: Token,
+        type_expr: ?*AstNode,
         value: *AstNode,
     };
 
@@ -113,11 +115,19 @@ pub const AstNode = union(enum) {
             },
             .@"const" => |n| {
                 try writeIndent(writer, indent);
-                try writer.print("const {s} = {f}", .{n.name.raw, n.value});
+                if (n.type_expr) |t| {
+                    try writer.print("const {f} {s} = {f}", .{t, n.name.raw, n.value});
+                }  else {
+                    try writer.print("const {s} = {f}", .{n.name.raw, n.value});
+                }
             },
             .let => |n| {
                 try writeIndent(writer, indent);
-                try writer.print("let {s} = {f}", .{n.name.raw, n.value});
+                if (n.type_expr) |t| {
+                    try writer.print("let {f} {s} = {f}", .{t, n.name.raw, n.value});
+                }  else {
+                    try writer.print("let {s} = {f}", .{n.name.raw, n.value});
+                }
             },
             .@"if" => |n| {
                 try writeIndent(writer, indent);
